@@ -18,6 +18,7 @@ A hackathon MVP for coordinating relief during emergencies. AidLink helps local 
 ## Tech Stack
 
 - Next.js 14 (App Router)
+- Python
 - TypeScript
 - Tailwind CSS
 - shadcn/ui-style components
