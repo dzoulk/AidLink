@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuthStore } from "@/lib/auth-store";
-import { OrganizerDashboard } from "@/components/OrganizerDashboard";
+import { OrganizerMap } from "@/components/OrganizerMap";
 import { LogIn } from "lucide-react";
 
 export default function DashboardPage() {
@@ -28,9 +28,9 @@ export default function DashboardPage() {
       <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-muted/30">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CardTitle className="text-xl">Organizer access</CardTitle>
+            <CardTitle className="text-xl">Organizer Map</CardTitle>
             <CardDescription>
-              This dashboard is for relief organizers. Log in to manage incidents and volunteers.
+              This map is for relief organizers. Log in to manage incidents and volunteers.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-4">
@@ -47,5 +47,5 @@ export default function DashboardPage() {
     );
   }
 
-  return <OrganizerDashboard />;
+  return <OrganizerMap />;
 }

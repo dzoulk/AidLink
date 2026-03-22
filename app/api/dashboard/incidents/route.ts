@@ -33,10 +33,78 @@ export async function GET() {
   }
 }
 
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const {
+      title,
+      description,
+      locationName,
+      lat,
+      lng,
+      severityScore,
+      volunteersNeeded,
+      safetyNote,
+      verificationStatus,
+      reportedAt,
+    } = body;
+
+    if (!title || lat == null || lng == null || !locationName) {
+      return NextResponse.json(
+        { error: "title, lat, lng, locationName required" },
+        { status: 400 }
+      );
+    }
+
+    const incident = await prisma.incident.create({
+      data: {
+        title: String(title).slice(0, 500),
+        description: description ? String(description) : null,
+        locationName: String(locationName),
+        lat: Number(lat),
+        lng: Number(lng),
+        severityScore: Number(severityScore ?? 5),
+        volunteersNeeded: Number(volunteersNeeded ?? 5),
+        safetyNote: safetyNote ? String(safetyNote) : null,
+        verificationStatus:
+          verificationStatus === "VERIFIED"
+            ? "VERIFIED"
+            : verificationStatus === "PARTIALLY_VERIFIED"
+              ? "PARTIALLY_VERIFIED"
+              : "UNVERIFIED",
+        reportedAt: reportedAt ? new Date(reportedAt) : new Date(),
+        incidentType: "rescue",
+        helpTypesNeeded: JSON.stringify(["medical", "search", "transport"]),
+        injuriesReported: 0,
+      },
+    });
+
+    return NextResponse.json({ incident, id: incident.id });
+  } catch (e) {
+    console.error(e);
+    return NextResponse.json(
+      { error: "Failed to create" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { incidentId, verificationStatus, operationalStatus } = body;
+    const {
+      incidentId,
+      verificationStatus,
+      operationalStatus,
+      title,
+      description,
+      locationName,
+      lat,
+      lng,
+      severityScore,
+      volunteersNeeded,
+      safetyNote,
+    } = body;
 
     if (!incidentId) {
       return NextResponse.json(
@@ -46,8 +114,16 @@ export async function PATCH(req: NextRequest) {
     }
 
     const update: Record<string, unknown> = {};
-    if (verificationStatus) update.verificationStatus = verificationStatus;
-    if (operationalStatus) update.operationalStatus = operationalStatus;
+    if (verificationStatus != null) update.verificationStatus = verificationStatus;
+    if (operationalStatus != null) update.operationalStatus = operationalStatus;
+    if (title != null) update.title = title;
+    if (description != null) update.description = description;
+    if (locationName != null) update.locationName = locationName;
+    if (lat != null) update.lat = Number(lat);
+    if (lng != null) update.lng = Number(lng);
+    if (severityScore != null) update.severityScore = Number(severityScore);
+    if (volunteersNeeded != null) update.volunteersNeeded = Number(volunteersNeeded);
+    if (safetyNote != null) update.safetyNote = safetyNote;
 
     await prisma.incident.update({
       where: { id: incidentId },

@@ -36,7 +36,7 @@ export function SiteHeader({ navItems, className }: SiteHeaderProps) {
           ))}
           <Link href="/dashboard" className="shrink-0">
             <Button variant="outline" size="sm">
-              Organizer Dashboard
+              Organizer Map
             </Button>
           </Link>
         </nav>

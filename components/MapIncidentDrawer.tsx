@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { X, ExternalLink } from "lucide-react";
+import { X, ExternalLink, Trash2 } from "lucide-react";
 import type { MapIncident } from "@/types/incident-json";
 import { CRITICALITY_META } from "@/lib/criticality-meta";
 import { cn } from "@/lib/utils";
@@ -15,9 +15,11 @@ const VERIFICATION_LABELS: Record<string, string> = {
 interface MapIncidentDrawerProps {
   incident: MapIncident;
   onClose: () => void;
+  /** When provided (organizer context), shows Remove Incident button */
+  onRemove?: (incidentId: string) => void;
 }
 
-export function MapIncidentDrawer({ incident, onClose }: MapIncidentDrawerProps) {
+export function MapIncidentDrawer({ incident, onClose, onRemove }: MapIncidentDrawerProps) {
   const meta = CRITICALITY_META[incident.criticality];
 
   return (
@@ -150,6 +152,19 @@ export function MapIncidentDrawer({ incident, onClose }: MapIncidentDrawerProps)
             Tel: 02-2929984
           </a>
         </div>
+
+        {onRemove && (
+          <div className="border-t pt-4">
+            <Button
+              variant="destructive"
+              className="w-full gap-2 bg-red-600 hover:bg-red-700"
+              onClick={() => onRemove(incident.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+              Remove Incident
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

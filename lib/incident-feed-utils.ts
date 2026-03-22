@@ -55,7 +55,7 @@ export function jsonToDisplay(raw: IncidentJson): DisplayIncident {
 export function mapToDisplay(inc: MapIncident): DisplayIncident {
   return {
     id: inc.id,
-    title: inc.title?.slice(0, 120) + (inc.title?.length > 120 ? "…" : "") ?? "",
+    title: (inc.title?.slice(0, 120) ?? "") + (inc.title && inc.title.length > 120 ? "…" : ""),
     locationName: `${inc.lat.toFixed(4)}, ${inc.lng.toFixed(4)}`,
     verificationStatus: inc.verification === "verified" ? "VERIFIED" : inc.verification === "confident" ? "PARTIALLY_VERIFIED" : "UNVERIFIED",
     severityScore: CRITICALITY_TO_SEVERITY[inc.criticality] ?? 5,

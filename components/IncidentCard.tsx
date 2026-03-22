@@ -23,6 +23,8 @@ interface IncidentCardProps {
   selected?: boolean;
   actions?: React.ReactNode;
   variant?: "default" | "dark";
+  /** Use organizer labels for verification (Initial, Confident, Verified) */
+  organizerLabels?: boolean;
 }
 
 export function IncidentCard({
@@ -34,6 +36,7 @@ export function IncidentCard({
   selected,
   actions,
   variant = "default",
+  organizerLabels = false,
 }: IncidentCardProps) {
   const shortage = Math.max(0, incident.volunteersNeeded - checkedInCount);
 
@@ -50,7 +53,7 @@ export function IncidentCard({
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-semibold line-clamp-2">{incident.title}</h3>
           <div className="flex flex-wrap gap-1 shrink-0">
-            <VerificationBadge status={incident.verificationStatus} />
+            <VerificationBadge status={incident.verificationStatus} organizerLabels={organizerLabels} />
           </div>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
