@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -93,6 +93,8 @@ interface RegionCrisisMapProps {
   className?: string;
 }
 
+const POPUP_CLOSE_DELAY_MS = 400;
+
 export function RegionCrisisMap({
   region,
   lang,
@@ -104,6 +106,8 @@ export function RegionCrisisMap({
   className = "",
 }: RegionCrisisMapProps) {
   const drawerOpen = !!selectedIncidentId;
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const openMarkerRef = useRef<L.Marker | null>(null);
 
   return (
     <div
@@ -133,6 +137,7 @@ export function RegionCrisisMap({
             weight: 2,
             fillColor: "#1e293b",
             fillOpacity: 0.12,
+            fillRule: "nonzero",
             interactive: true,
           }}
         >
@@ -199,8 +204,28 @@ export function RegionCrisisMap({
                 icon={createIcon(color)}
                 zIndexOffset={selected ? 800 : 400}
                 eventHandlers={{
-                  mouseover: (e) => e.target.openPopup(),
-                  mouseout: (e) => e.target.closePopup(),
+                  mouseover: (e) => {
+                    if (closeTimeoutRef.current) {
+                      clearTimeout(closeTimeoutRef.current);
+                      closeTimeoutRef.current = null;
+                    }
+                    openMarkerRef.current = e.target;
+                    e.target.openPopup();
+                  },
+                  mouseout: (e) => {
+                    closeTimeoutRef.current = setTimeout(() => {
+                      e.target.closePopup();
+                      if (openMarkerRef.current === e.target) {
+                        openMarkerRef.current = null;
+                      }
+                      closeTimeoutRef.current = null;
+                    }, POPUP_CLOSE_DELAY_MS);
+                  },
+                  click: () => {
+                    onSelectIncident(inc.id);
+                    const z = getZoneForRegion(region.id, inc.lat, inc.lng);
+                    onSelectZone(z?.id ?? null);
+                  },
                 }}
               >
                 <Popup
@@ -209,7 +234,25 @@ export function RegionCrisisMap({
                   className="incident-summary-popup"
                   offset={[0, -12]}
                 >
-                  <div className="min-w-[180px] py-1">
+                  <div
+                    className="min-w-[180px] py-1"
+                    onMouseEnter={() => {
+                      if (closeTimeoutRef.current) {
+                        clearTimeout(closeTimeoutRef.current);
+                        closeTimeoutRef.current = null;
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      const marker = openMarkerRef.current;
+                      if (marker) {
+                        closeTimeoutRef.current = setTimeout(() => {
+                          marker.closePopup();
+                          openMarkerRef.current = null;
+                          closeTimeoutRef.current = null;
+                        }, POPUP_CLOSE_DELAY_MS);
+                      }
+                    }}
+                  >
                     <p className="font-semibold text-sm">{inc.title}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {getCriticalityLabel(lang, inc.criticality)} • {inc.casualtiesEstimate} {t(lang, "casualtiesEst")}

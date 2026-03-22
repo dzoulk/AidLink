@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AidLinkLogo } from "@/components/AidLinkLogo";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -39,9 +40,7 @@ export function SiteHeader({ navItems, className }: SiteHeaderProps) {
       )}
     >
       <div className="container flex h-14 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="ml-2 shrink-0 font-bold text-xl tracking-tight sm:ml-4">
-          AidLink
-        </Link>
+        <AidLinkLogo className="ml-2 sm:ml-4" />
         <nav
           className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2 sm:gap-x-4"
           aria-label="Main"

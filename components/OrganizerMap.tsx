@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { AidLinkLogo } from "@/components/AidLinkLogo";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/auth-store";
 import { OrganizerOpenIncidentsPanel } from "@/components/OrganizerOpenIncidentsPanel";
@@ -11,17 +12,22 @@ import { MapIncidentDrawer } from "@/components/MapIncidentDrawer";
 import { AssignmentPanel } from "@/components/AssignmentPanel";
 import { CheckInModal } from "@/components/CheckInModal";
 import { EditIncidentModal } from "@/components/EditIncidentModal";
-import { GazaZonePanelMapIncident } from "@/components/GazaZonePanelMapIncident";
-import { pointInBounds, GAZA_FLY_BOUNDS, getZoneForPoint } from "@/lib/gaza-zones";
+import { RegionZonePanel } from "@/components/RegionZonePanel";
+import { pointInBounds } from "@/lib/gaza-zones";
+import { getZoneForPoint } from "@/lib/gaza-zones";
+import { getZoneForPoint as getUkraineZoneForPoint } from "@/lib/ukraine-zones";
 import { jsonToMapIncident, prismaToMapIncident } from "@/lib/incident-adapters";
+import { REGIONS } from "@/lib/regions";
+import type { RegionId, LangCode } from "@/lib/region-types";
 import { LogOut, RefreshCw } from "lucide-react";
+import { t } from "@/lib/translations";
 import type { Incident, VolunteerProfile, Assignment } from "@prisma/client";
 import type { MapIncident, IncidentJson } from "@/types/incident-json";
 
-const GazaCrisisMap = dynamic(
+const RegionCrisisMap = dynamic(
   () =>
-    import("@/components/GazaCrisisMap").then((m) => ({
-      default: m.GazaCrisisMap,
+    import("@/components/RegionCrisisMap").then((m) => ({
+      default: m.RegionCrisisMap,
     })),
   {
     ssr: false,
@@ -33,8 +39,15 @@ const GazaCrisisMap = dynamic(
   }
 );
 
-function inGaza(inc: { lat: number; lng: number }) {
-  return pointInBounds(inc.lat, inc.lng, GAZA_FLY_BOUNDS);
+function inRegion(inc: { lat: number; lng: number }, regionId: RegionId): boolean {
+  const region = REGIONS[regionId];
+  return region ? pointInBounds(inc.lat, inc.lng, region.flyBounds) : false;
+}
+
+function getZoneForRegion(regionId: RegionId, lat: number, lng: number) {
+  if (regionId === "gaza") return getZoneForPoint(lat, lng);
+  if (regionId === "ukraine") return getUkraineZoneForPoint(lat, lng);
+  return null;
 }
 
 type IncidentWithAssignments = Incident & {
@@ -45,18 +58,25 @@ type VolunteerWithAssignments = VolunteerProfile & {
   assignments: (Assignment & { incident: { title: string } })[];
 };
 
-export function OrganizerMap() {
+interface OrganizerMapProps {
+  region: RegionId;
+  lang: LangCode;
+}
+
+export function OrganizerMap({ region, lang }: OrganizerMapProps) {
   const { logout } = useAuthStore();
+  const regionConfig = REGIONS[region];
+  const [supabaseIncidents, setSupabaseIncidents] = useState<MapIncident[]>([]);
   const [prismaIncidents, setPrismaIncidents] = useState<IncidentWithAssignments[]>([]);
   const [jsonFallbackIncidents, setJsonFallbackIncidents] = useState<MapIncident[]>([]);
   const [volunteers, setVolunteers] = useState<VolunteerWithAssignments[]>([]);
   const [counts, setCounts] = useState<Record<string, { i: number; c: number; ch: number }>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
-  const [gazaMode, setGazaMode] = useState(false);
   const [editIncident, setEditIncident] = useState<Incident | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [checkInOpen, setCheckInOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const prismaById = useMemo(
     () => Object.fromEntries(prismaIncidents.map((i) => [i.id, i])),
@@ -77,13 +97,17 @@ export function OrganizerMap() {
               i.verificationStatus ?? ""
             )
         )
-        .filter(inGaza)
+        .filter((i) => inRegion(i, region))
         .map(prismaToMapIncident),
-    [openPrismaIncidents]
+    [openPrismaIncidents, region]
   );
 
   const mapIncidents =
-    mapIncidentsFromPrisma.length > 0 ? mapIncidentsFromPrisma : jsonFallbackIncidents;
+    supabaseIncidents.length > 0
+      ? supabaseIncidents
+      : mapIncidentsFromPrisma.length > 0
+        ? mapIncidentsFromPrisma
+        : jsonFallbackIncidents;
 
   const selectedPrismaIncident = selectedId ? prismaById[selectedId] : null;
   const selectedMapIncident = mapIncidents.find((i) => i.id === selectedId);
@@ -95,47 +119,66 @@ export function OrganizerMap() {
       (v) => !selectedPrismaIncident.assignments.some((a) => a.volunteerId === v.id)
     );
 
-  const fetchDashboard = async () => {
-    const [incRes, volRes] = await Promise.all([
-      fetch("/api/dashboard/incidents"),
-      fetch("/api/dashboard/volunteers"),
-    ]);
-    const incData = await incRes.json();
-    const volData = await volRes.json();
-    const incidents = incData.incidents ?? [];
-    setPrismaIncidents(incidents);
-    setVolunteers(volData.volunteers ?? []);
-    setCounts(incData.counts ?? {});
+  const fetchDashboard = useCallback(() => {
+    setIsRefreshing(true);
+    const loadFallbacks = () =>
+      Promise.all([
+        fetch("/api/dashboard/incidents"),
+        fetch("/api/dashboard/volunteers"),
+      ])
+        .then(([incRes, volRes]) =>
+          Promise.all([
+            incRes.ok ? incRes.json() : Promise.resolve({ incidents: [], counts: {} }),
+            volRes.ok ? volRes.json() : Promise.resolve({ volunteers: [] }),
+          ])
+        )
+        .then(([incData, volData]) => {
+          const incidents = incData.incidents ?? [];
+          setPrismaIncidents(incidents);
+          setVolunteers(volData.volunteers ?? []);
+          setCounts(incData.counts ?? {});
+          const openCount = incidents.filter((i: Incident) => i.operationalStatus !== "RESOLVED").length;
+          if (openCount === 0) {
+            return fetch("/api/incidents-json")
+              .then((r) => (r.ok ? r.json() : Promise.resolve({ incidents: [] })))
+              .then((jsonData: { incidents?: IncidentJson[] }) => {
+                const json = jsonData.incidents ?? [];
+                if (Array.isArray(json) && json.length > 0) {
+                  setJsonFallbackIncidents(
+                    json.map(jsonToMapIncident).filter((i) => inRegion(i, region))
+                  );
+                  return;
+                }
+                setJsonFallbackIncidents([]);
+              })
+              .catch(() => setJsonFallbackIncidents([]));
+          }
+          setJsonFallbackIncidents([]);
+        });
 
-    if (incidents.filter((i: Incident) => i.operationalStatus !== "RESOLVED").length === 0) {
-      try {
-        const jsonRes = await fetch("/api/incidents-json");
-        const jsonData = await jsonRes.json();
-        const json = jsonData.incidents ?? [];
-        if (json.length > 0) {
-          setJsonFallbackIncidents(
-            (json as IncidentJson[]).map(jsonToMapIncident).filter(inGaza)
-          );
-          return;
+    fetch(`/api/incidents-supabase?region=${region}`)
+      .then((r) => (r.ok ? r.json() : Promise.resolve({ incidents: [] })))
+      .then((data: { incidents?: MapIncident[] }) => {
+        const incidents = (data.incidents ?? []).filter((i) => inRegion(i, region));
+        if (Array.isArray(incidents) && incidents.length > 0) {
+          setSupabaseIncidents(incidents);
+          return loadFallbacks();
         }
-      } catch {
-        // ignore
-      }
-      setJsonFallbackIncidents([]);
-    } else {
-      setJsonFallbackIncidents([]);
-    }
-  };
-
-  const refresh = async () => {
-    await fetchDashboard();
-  };
+        setSupabaseIncidents([]);
+        return loadFallbacks();
+      })
+      .catch(() => {
+        setSupabaseIncidents([]);
+        return loadFallbacks();
+      })
+      .finally(() => setIsRefreshing(false));
+  }, [region]);
 
   useEffect(() => {
-    refresh();
-    const t = setInterval(refresh, 15000);
-    return () => clearInterval(t);
-  }, []);
+    fetchDashboard();
+    const id = setInterval(fetchDashboard, 15000);
+    return () => clearInterval(id);
+  }, [fetchDashboard]);
 
   const handleVerify = async (incidentId: string, status: string) => {
     await fetch("/api/dashboard/incidents", {
@@ -143,7 +186,7 @@ export function OrganizerMap() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ incidentId, verificationStatus: status }),
     });
-    refresh();
+    fetchDashboard();
   };
 
   const handleRemove = async (incidentId: string) => {
@@ -153,7 +196,7 @@ export function OrganizerMap() {
       body: JSON.stringify({ incidentId, operationalStatus: "RESOLVED" }),
     });
     setSelectedId(null);
-    refresh();
+    fetchDashboard();
   };
 
   const handleEditSave = async (
@@ -176,7 +219,7 @@ export function OrganizerMap() {
     });
     setEditModalOpen(false);
     setEditIncident(null);
-    refresh();
+    fetchDashboard();
   };
 
   const handleAssign = async (volunteerId: string) => {
@@ -186,7 +229,7 @@ export function OrganizerMap() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ incidentId: selectedId, volunteerId }),
     });
-    refresh();
+    fetchDashboard();
   };
 
   const handleStatusChange = async (assignmentId: string, status: string) => {
@@ -195,7 +238,7 @@ export function OrganizerMap() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ assignmentId, status }),
     });
-    refresh();
+    fetchDashboard();
   };
 
   const handleCheckIn = async (code: string, assignmentId?: string): Promise<boolean> => {
@@ -206,34 +249,31 @@ export function OrganizerMap() {
       body: JSON.stringify({ incidentId: selectedId, code, assignmentId }),
     });
     const data = await res.json();
-    if (data.ok) refresh();
+    if (data.ok) fetchDashboard();
     return !!data.ok;
   };
 
   const handleSelectIncident = (id: string) => {
     setSelectedId(id);
-    setGazaMode(true);
     const inc = mapIncidents.find((i) => i.id === id);
     if (inc) {
-      const z = getZoneForPoint(inc.lat, inc.lng);
+      const z = getZoneForRegion(region, inc.lat, inc.lng);
       setSelectedZoneId(z?.id ?? null);
     }
   };
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="shrink-0 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <header className="shrink-0 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="ml-2 shrink-0 font-bold text-xl tracking-tight sm:ml-4">
-            AidLink
-          </Link>
+          <AidLinkLogo className="ml-2 sm:ml-4" />
           <nav className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2 sm:gap-x-4">
             <Link href="/" className="shrink-0">
               <Button variant="outline" size="sm">
                 Home
               </Button>
             </Link>
-            <Link href="/map" className="shrink-0">
+            <Link href={`/map?region=${region}&lang=${lang}`} className="shrink-0">
               <Button variant="outline" size="sm">
                 Crisis Map
               </Button>
@@ -246,59 +286,38 @@ export function OrganizerMap() {
         </div>
       </header>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b bg-muted/30 px-4 py-3 text-sm">
-        <Button
-          type="button"
-          variant={gazaMode ? "secondary" : "default"}
-          size="sm"
-          onClick={() => setGazaMode(true)}
-        >
-          Gaza view
-        </Button>
-        {gazaMode && (
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div className="relative z-[1100] flex shrink-0 flex-wrap items-center gap-3 border-b bg-muted/30 px-4 py-3 text-sm">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => {
-              setGazaMode(false);
-              setSelectedZoneId(null);
-              setSelectedId(null);
-            }}
+            disabled={isRefreshing}
+            onClick={() => fetchDashboard()}
+            className="gap-1.5"
           >
-            World map
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`}
+            />
+            {t(lang, "refresh")}
           </Button>
-        )}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={refresh}
-          className="gap-1.5"
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          Refresh
-        </Button>
-        <span className="text-muted-foreground">
-          {gazaMode
-            ? "Hover a marker for summary • Click Open details for full panel"
-            : "Click the Gaza area or use Gaza view to zoom in"}
-        </span>
-      </div>
+          <span className="text-muted-foreground">
+            {t(lang, "hoverHint")} • {t(lang, "clickHint")}
+          </span>
+        </div>
 
-      <div className="relative flex min-h-0 flex-1 flex-col">
         <div className="relative min-h-0 flex-1">
-          <GazaCrisisMap
+          <RegionCrisisMap
+            region={regionConfig}
+            lang={lang}
             incidents={mapIncidents}
-            gazaMode={gazaMode}
-            onEnterGaza={() => setGazaMode(true)}
             selectedIncidentId={selectedId}
             onSelectIncident={(id) => {
               setSelectedId(id);
               if (id) {
                 const inc = mapIncidents.find((i) => i.id === id);
                 if (inc) {
-                  const z = getZoneForPoint(inc.lat, inc.lng);
+                  const z = getZoneForRegion(region, inc.lat, inc.lng);
                   setSelectedZoneId(z?.id ?? null);
                 }
               } else {
@@ -354,8 +373,10 @@ export function OrganizerMap() {
           />
         )}
 
-        {selectedZoneId && !selectedMapIncident && gazaMode && (
-          <GazaZonePanelMapIncident
+        {selectedZoneId && !selectedMapIncident && (
+          <RegionZonePanel
+            region={regionConfig}
+            lang={lang}
             zoneId={selectedZoneId}
             incidents={mapIncidents}
             onClose={() => setSelectedZoneId(null)}

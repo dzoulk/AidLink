@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -83,6 +83,8 @@ interface GazaCrisisMapProps {
   className?: string;
 }
 
+const POPUP_CLOSE_DELAY_MS = 400;
+
 export function GazaCrisisMap({
   incidents,
   gazaMode,
@@ -97,6 +99,8 @@ export function GazaCrisisMap({
   const worldZoom = 5;
 
   const drawerOpen = !!selectedIncidentId;
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const openMarkerRef = useRef<L.Marker | null>(null);
 
   return (
     <div
@@ -128,6 +132,7 @@ export function GazaCrisisMap({
             weight: 2,
             fillColor: "#1e293b",
             fillOpacity: gazaMode ? 0.12 : 0.5,
+            fillRule: "nonzero",
             interactive: true,
           }}
           eventHandlers={{
@@ -178,17 +183,54 @@ export function GazaCrisisMap({
                   zIndexOffset={selected ? 800 : 400}
                   eventHandlers={{
                     mouseover: (e) => {
+                      if (closeTimeoutRef.current) {
+                        clearTimeout(closeTimeoutRef.current);
+                        closeTimeoutRef.current = null;
+                      }
+                      openMarkerRef.current = e.target;
                       e.target.openPopup();
+                    },
+                    mouseout: (e) => {
+                      closeTimeoutRef.current = setTimeout(() => {
+                        e.target.closePopup();
+                        if (openMarkerRef.current === e.target) {
+                          openMarkerRef.current = null;
+                        }
+                        closeTimeoutRef.current = null;
+                      }, POPUP_CLOSE_DELAY_MS);
+                    },
+                    click: () => {
+                      onSelectIncident(inc.id);
+                      const z = getZoneForPoint(inc.lat, inc.lng);
+                      onSelectZone(z?.id ?? null);
                     },
                   }}
                 >
                   <Popup
                     closeButton={false}
-                    autoClose={false}
+                    autoClose
                     className="incident-summary-popup"
                     offset={[0, -12]}
                   >
-                    <div className="min-w-[180px] py-1">
+                    <div
+                      className="min-w-[180px] py-1"
+                      onMouseEnter={() => {
+                        if (closeTimeoutRef.current) {
+                          clearTimeout(closeTimeoutRef.current);
+                          closeTimeoutRef.current = null;
+                        }
+                      }}
+                      onMouseLeave={() => {
+                        const marker = openMarkerRef.current;
+                        if (marker) {
+                          closeTimeoutRef.current = setTimeout(() => {
+                            marker.closePopup();
+                            openMarkerRef.current = null;
+                            closeTimeoutRef.current = null;
+                          }, POPUP_CLOSE_DELAY_MS);
+                        }
+                      }}
+                    >
                       <p className="font-semibold text-sm">{inc.title}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {meta.label} • {inc.casualtiesEstimate} casualties est.
@@ -200,7 +242,7 @@ export function GazaCrisisMap({
                           e.stopPropagation();
                           onSelectIncident(inc.id);
                           const z = getZoneForPoint(inc.lat, inc.lng);
-                          onSelectZone(z?.id ?? null);
+                          onSelectZone(z ?? null);
                         }}
                       >
                         Open details

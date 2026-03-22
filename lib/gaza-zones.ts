@@ -14,13 +14,18 @@ export type GazaSubZone = {
   bounds: ZoneBounds;
 };
 
-/** Simplified Gaza Strip outline (demo geometry, not a legal boundary). */
+/**
+ * Gaza Strip outline — land only. [lat, lng].
+ * Derived from sepans/palestine_geodata; CCW winding so fill is land.
+ * West = coastline (lng 34.22–34.24); east = Israel border; excludes Mediterranean.
+ */
 export const GAZA_STRIP_POLYGON: [number, number][] = [
-  [31.59, 34.22],
-  [31.59, 34.56],
-  [31.21, 34.54],
-  [31.21, 34.22],
-  [31.59, 34.22],
+  [31.5941, 34.4895], [31.5868, 34.4838], [31.5590, 34.4630], [31.5290, 34.4360],
+  [31.5000, 34.4080], [31.4720, 34.3800], [31.4420, 34.3530], [31.4150, 34.3230],
+  [31.3870, 34.2590], [31.3343, 34.2290], [31.3305, 34.2305], [31.2397, 34.2623],
+  [31.2236, 34.2680], [31.2582, 34.3206], [31.3299, 34.3683], [31.3588, 34.3658],
+  [31.4272, 34.4159], [31.4574, 34.4525], [31.5234, 34.5463], [31.5598, 34.5325],
+  [31.5941, 34.4895],
 ];
 
 export const GAZA_FLY_BOUNDS: ZoneBounds = [

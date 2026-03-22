@@ -82,7 +82,7 @@ export default function LandingPage() {
                   {t(lang, "viewCrisisMap")}
                 </Button>
               </Link>
-              <Link href="/dashboard">
+              <Link href={`/dashboard?region=${region}&lang=${lang}`}>
                 <Button variant="secondary" size="lg" className="gap-2">
                   <LayoutDashboard className="h-4 w-4" />
                   {t(lang, "organizerMap")}

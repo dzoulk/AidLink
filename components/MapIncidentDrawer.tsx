@@ -100,7 +100,7 @@ export function MapIncidentDrawer({ incident, onClose, onRemove }: MapIncidentDr
             <div className="grid grid-cols-2 gap-2">
               {incident.media
                 .filter((m) => m.type === "image")
-                .slice(0, 4)
+                .slice(0, 6)
                 .map((m, i) => (
                   <a
                     key={i}
@@ -114,6 +114,21 @@ export function MapIncidentDrawer({ incident, onClose, onRemove }: MapIncidentDr
                       alt=""
                       className="h-full w-full object-cover"
                     />
+                  </a>
+                ))}
+              {incident.media
+                .filter((m) => m.type === "video")
+                .slice(0, 4)
+                .map((m, i) => (
+                  <a
+                    key={`v-${i}`}
+                    href={m.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-xs transition-colors hover:bg-accent/50"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">Video {i + 1}</span>
                   </a>
                 ))}
             </div>

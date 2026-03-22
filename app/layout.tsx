@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Quicksand } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
+const quicksand = Quicksand({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  variable: "--font-quicksand",
+});
 
 export const metadata: Metadata = {
-  title: "AidLink — Crisis Response Coordination",
+  title: "Aid-Link — Crisis Response Coordination",
   description: "Coordinate volunteers during emergencies. Triage, verify, assign.",
 };
 
@@ -16,7 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} antialiased`}>
+      <body className={`${inter.className} ${quicksand.variable} antialiased`}>
         {children}
       </body>
     </html>

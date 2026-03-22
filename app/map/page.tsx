@@ -86,32 +86,41 @@ function PublicMapContent() {
 
   const fetchIncidents = useCallback(() => {
     setIsRefreshing(true);
-    Promise.resolve()
-      .then(() => fetch("/api/incidents-json"))
+    fetch(`/api/incidents-supabase?region=${region}`)
       .then((r) => r.json())
-      .then((data: { incidents?: IncidentJson[] }) => {
-        const json = data.incidents ?? [];
-        if (Array.isArray(json) && json.length > 0) {
-          setMapIncidents(
-            json.map(jsonToMapIncident).filter((i) => inRegion(i, region))
-          );
+      .then((data: { incidents?: MapIncident[] }) => {
+        const incidents = data.incidents ?? [];
+        if (Array.isArray(incidents) && incidents.length > 0) {
+          setMapIncidents(incidents.filter((i) => inRegion(i, region)));
           return;
         }
-        return fetch("/api/incidents")
+        // Fallback to legacy sources if Supabase returns empty
+        return fetch("/api/incidents-json")
           .then((r) => r.json())
-          .then((fallback: { incidents?: Incident[] }) => {
-            const incidents = (fallback.incidents ?? []) as Incident[];
-            setMapIncidents(
-              incidents
-                .filter(
-                  (i) =>
-                    !["FALSE_REPORT", "DUPLICATE"].includes(
-                      i.verificationStatus ?? ""
+          .then((jsonData: { incidents?: IncidentJson[] }) => {
+            const json = jsonData.incidents ?? [];
+            if (Array.isArray(json) && json.length > 0) {
+              setMapIncidents(
+                json.map(jsonToMapIncident).filter((i) => inRegion(i, region))
+              );
+              return;
+            }
+            return fetch("/api/incidents")
+              .then((r) => r.json())
+              .then((fallback: { incidents?: Incident[] }) => {
+                const list = (fallback.incidents ?? []) as Incident[];
+                setMapIncidents(
+                  list
+                    .filter(
+                      (i) =>
+                        !["FALSE_REPORT", "DUPLICATE"].includes(
+                          i.verificationStatus ?? ""
+                        )
                     )
-                )
-                .map(prismaToMapIncident)
-                .filter((i) => inRegion(i, region))
-            );
+                    .map(prismaToMapIncident)
+                    .filter((i) => inRegion(i, region))
+                );
+              });
           });
       })
       .catch(() => setMapIncidents([]))
@@ -137,10 +146,7 @@ function PublicMapContent() {
             variant="outline"
             size="sm"
             disabled={isRefreshing}
-            onClick={() => {
-              setIsRefreshing(true);
-              window.location.reload();
-            }}
+            onClick={() => fetchIncidents()}
             className="gap-1.5"
           >
             <RefreshCw
