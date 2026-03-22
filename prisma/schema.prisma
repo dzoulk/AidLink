@@ -1,0 +1,130 @@
+// AidLink Crisis Response Coordination Platform
+// Prisma Schema - SQLite for local demo
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// SQLite does not support native enums - using String
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      String   // "volunteer" | "organizer" | "admin"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  volunteerProfile VolunteerProfile?
+  organizerProfile OrganizerProfile?
+}
+
+model VolunteerProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName      String
+  phone         String?
+  email         String
+  skills        String   // JSON array: ["medical", "search", "transport", etc.]
+  hasVehicle    Boolean  @default(false)
+  availableNow  Boolean  @default(false)
+  travelRadius  Int      @default(50) // km
+  lastKnownLat  Float?
+  lastKnownLng  Float?
+  lastKnownArea String?
+  status        String @default("AVAILABLE")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  assignments  Assignment[]
+}
+
+model OrganizerProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orgId  String?
+  name   String
+  role   String @default("organizer")
+}
+
+model Incident {
+  id                  String                     @id @default(cuid())
+  title               String
+  description         String?
+  lat                 Float
+  lng                 Float
+  locationName        String
+  sourcePlatform      String?
+  sourceText          String?
+  reportedAt          DateTime
+  severityScore       Int      @default(5) // 1-10
+  urgencyLevel        String @default("MEDIUM")
+  verificationStatus  String @default("UNVERIFIED")
+  operationalStatus   String @default("NEW")
+  incidentType        String   // rescue, medical, food, shelter, transport
+  helpTypesNeeded     String   // JSON array of needed roles
+  volunteersNeeded    Int      @default(1)
+  safetyNote          String?
+  checkInCode         String?  @unique // For QR/demo check-in
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  assignments     Assignment[]
+  reports         IncidentReport[]
+  notes           IncidentNote[]
+}
+
+model IncidentReport {
+  id           String   @id @default(cuid())
+  incidentId   String?
+  incident     Incident? @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+  rawText      String
+  platform     String   @default("twitter")
+  confidence   Float    @default(0.5)
+  extractedLat Float?
+  extractedLng Float?
+  extractedLocation String?
+  timestamp    DateTime
+  isDuplicate  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+model IncidentNote {
+  id         String   @id @default(cuid())
+  incidentId String
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  content    String
+  isInternal Boolean  @default(true)
+  authorId   String?
+  createdAt  DateTime @default(now())
+}
+
+model Assignment {
+  id         String   @id @default(cuid())
+  incidentId String
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  volunteerId String
+  volunteer  VolunteerProfile @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  status     String @default("INTERESTED")
+  role       String?  // medical, rescue, transport, etc.
+  assignedAt DateTime @default(now())
+  confirmedAt DateTime?
+  checkedInAt DateTime?
+
+  checkInLogs CheckInLog[]
+}
+
+model CheckInLog {
+  id           String   @id @default(cuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  code         String
+  checkedInAt  DateTime @default(now())
+}
