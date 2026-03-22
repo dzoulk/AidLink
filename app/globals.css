@@ -69,6 +69,21 @@
   border: none !important;
 }
 
+/* Hide summarized popup when detail drawer is open */
+.incident-drawer-open .leaflet-popup {
+  display: none !important;
+}
+
+/* Incident summary popup styling - stable, anchored to marker */
+.incident-summary-popup.leaflet-popup .leaflet-popup-content-wrapper {
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid hsl(var(--border));
+}
+.incident-summary-popup.leaflet-popup .leaflet-popup-tip {
+  display: block;
+}
+
 /* Zone hover tooltip styling */
 .zone-tooltip.leaflet-tooltip {
   padding: 0.5rem 0.75rem;

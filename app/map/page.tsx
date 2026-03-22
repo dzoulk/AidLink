@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { SiteHeader } from "@/components/SiteHeader";
-import { IncidentDrawer } from "@/components/IncidentDrawer";
-import { GazaZonePanel } from "@/components/GazaZonePanel";
+import { MapIncidentDrawer } from "@/components/MapIncidentDrawer";
+import { GazaZonePanelMapIncident } from "@/components/GazaZonePanelMapIncident";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
 import { pointInBounds, GAZA_FLY_BOUNDS } from "@/lib/gaza-zones";
-import { TIME_URGENCY_META } from "@/lib/time-urgency";
+import { CRITICALITY_META } from "@/lib/criticality-meta";
+import { jsonToMapIncident, prismaToMapIncident } from "@/lib/incident-adapters";
 import type { Incident } from "@prisma/client";
+import type { MapIncident, IncidentJson } from "@/types/incident-json";
 
 const GazaCrisisMap = dynamic(
   () =>
@@ -26,51 +27,49 @@ const GazaCrisisMap = dynamic(
   }
 );
 
-function incidentInGazaBounds(inc: Incident): boolean {
+function inGaza(inc: { lat: number; lng: number }) {
   return pointInBounds(inc.lat, inc.lng, GAZA_FLY_BOUNDS);
 }
 
 export default function PublicMapPage() {
-  const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [counts, setCounts] = useState<
-    Record<string, { i: number; c: number; ch: number }>
-  >({});
+  const [mapIncidents, setMapIncidents] = useState<MapIncident[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [gazaMode, setGazaMode] = useState(false);
-  const router = useRouter();
 
   useEffect(() => {
-    fetch("/api/incidents")
+    fetch("/api/incidents-json")
       .then((r) => r.json())
-      .then((data) => {
-        setIncidents(data.incidents ?? []);
-        setCounts(data.counts ?? {});
+      .then((data: { incidents?: IncidentJson[] }) => {
+        const json = data.incidents ?? [];
+        if (json.length > 0) {
+          setMapIncidents(json.map(jsonToMapIncident).filter(inGaza));
+          return;
+        }
+        return fetch("/api/incidents")
+          .then((r) => r.json())
+          .then((fallback: { incidents?: Incident[] }) => {
+            const incidents = (fallback.incidents ?? []) as Incident[];
+            setMapIncidents(
+              incidents
+                .filter(
+                  (i) =>
+                    !["FALSE_REPORT", "DUPLICATE"].includes(
+                      i.verificationStatus ?? ""
+                    )
+                )
+                .map(prismaToMapIncident)
+                .filter(inGaza)
+            );
+          });
       })
-      .catch(() => setIncidents([]));
+      .catch(() => setMapIncidents([]));
   }, []);
 
-  const handleOfferHelp = () => {
-    router.push(`/volunteer?incident=${selectedId}`);
-  };
-
-  const publicIncidents = useMemo(
-    () =>
-      incidents.filter(
-        (i) => !["FALSE_REPORT", "DUPLICATE"].includes(i.verificationStatus)
-      ),
-    [incidents]
+  const selected = useMemo(
+    () => mapIncidents.find((i) => i.id === selectedId) ?? null,
+    [mapIncidents, selectedId]
   );
-
-  const mapIncidents = useMemo(
-    () => publicIncidents.filter(incidentInGazaBounds),
-    [publicIncidents]
-  );
-
-  const selected = incidents.find((i) => i.id === selectedId);
-  const c = selectedId
-    ? counts[selectedId] ?? { i: 0, c: 0, ch: 0 }
-    : { i: 0, c: 0, ch: 0 };
 
   return (
     <div className="flex h-screen flex-col">
@@ -107,8 +106,8 @@ export default function PublicMapPage() {
           )}
           <span className="text-muted-foreground">
             {gazaMode
-              ? "Hover a zone for a summary • Click or use Open details for full panel"
-              : "Click the shaded Gaza area to zoom in"}
+              ? "Hover a marker for summary • Click Open details for full panel"
+              : "Click the Gaza area or use Gaza view to zoom in"}
           </span>
         </div>
 
@@ -126,53 +125,45 @@ export default function PublicMapPage() {
         </div>
 
         {selected && (
-          <IncidentDrawer
+          <MapIncidentDrawer
             incident={selected}
-            interestedCount={c.i}
-            confirmedCount={c.c}
-            checkedInCount={c.ch}
             onClose={() => setSelectedId(null)}
-            onOfferHelp={handleOfferHelp}
-            isPublic
           />
         )}
 
         {selectedZoneId && !selected && gazaMode && (
-          <GazaZonePanel
+          <GazaZonePanelMapIncident
             zoneId={selectedZoneId}
             incidents={mapIncidents}
-            counts={counts}
             onClose={() => setSelectedZoneId(null)}
-            onSelectIncident={(id) => {
-              setSelectedId(id);
-            }}
+            onSelectIncident={setSelectedId}
           />
         )}
       </div>
 
       <div className="pointer-events-none absolute left-4 top-32 z-[1000] max-w-[calc(100vw-2rem)] rounded-xl border bg-background/95 p-4 text-sm shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:top-36">
-        <p className="pointer-events-auto font-medium">Urgency (by report age)</p>
+        <p className="pointer-events-auto font-medium">Criticality (by time since incident)</p>
         <div className="pointer-events-auto mt-2 flex flex-wrap gap-x-4 gap-y-1.5">
           <span className="flex items-center gap-1.5 whitespace-nowrap">
             <span
               className="h-2.5 w-2.5 shrink-0 rounded-full"
-              style={{ background: TIME_URGENCY_META.CRITICAL.marker }}
+              style={{ background: CRITICALITY_META.critical.marker }}
             />
-            Critical (0–24h)
+            Critical
           </span>
           <span className="flex items-center gap-1.5 whitespace-nowrap">
             <span
               className="h-2.5 w-2.5 shrink-0 rounded-full"
-              style={{ background: TIME_URGENCY_META.MODERATE.marker }}
+              style={{ background: CRITICALITY_META["needs support"].marker }}
             />
-            Moderate (24h–3d)
+            Needs Support
           </span>
           <span className="flex items-center gap-1.5 whitespace-nowrap">
             <span
               className="h-2.5 w-2.5 shrink-0 rounded-full"
-              style={{ background: TIME_URGENCY_META.CLEAN_UP.marker }}
+              style={{ background: CRITICALITY_META.cleanup.marker }}
             />
-            Clean Up (3d+)
+            Clean Up
           </span>
         </div>
       </div>

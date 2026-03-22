@@ -1,31 +1,20 @@
 "use client";
 
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import {
   MapContainer,
   TileLayer,
   Marker,
   Popup,
   Polygon,
-  Tooltip,
+  Circle,
   useMap,
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import type { Incident } from "@prisma/client";
-import {
-  GAZA_STRIP_POLYGON,
-  GAZA_FLY_BOUNDS,
-  GAZA_SUB_ZONES,
-  boundsToRoundedPolygon,
-  incidentsInZone,
-  pointInBounds,
-  zoneDisplayUrgency,
-} from "@/lib/gaza-zones";
-import {
-  getTimeUrgencyTier,
-  TIME_URGENCY_META,
-} from "@/lib/time-urgency";
+import type { MapIncident } from "@/types/incident-json";
+import { GAZA_STRIP_POLYGON, GAZA_FLY_BOUNDS, getZoneForPoint } from "@/lib/gaza-zones";
+import { CRITICALITY_META } from "@/lib/criticality-meta";
 
 const createIcon = (color: string) =>
   L.divIcon({
@@ -55,8 +44,16 @@ function ViewController({ gazaMode }: { gazaMode: boolean }) {
   return null;
 }
 
+function PopupCloser({ drawerOpen }: { drawerOpen: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    if (drawerOpen) map.closePopup();
+  }, [drawerOpen, map]);
+  return null;
+}
+
 interface GazaCrisisMapProps {
-  incidents: Incident[];
+  incidents: MapIncident[];
   gazaMode: boolean;
   onEnterGaza: () => void;
   selectedIncidentId: string | null;
@@ -79,9 +76,11 @@ export function GazaCrisisMap({
   const worldCenter: [number, number] = [28, 38];
   const worldZoom = 5;
 
+  const drawerOpen = !!selectedIncidentId;
+
   return (
     <div
-      className={`h-full min-h-[400px] overflow-hidden rounded-lg border ${className}`}
+      className={`h-full min-h-[400px] overflow-hidden rounded-lg border ${className} ${drawerOpen ? "incident-drawer-open" : ""}`}
     >
       <MapContainer
         center={worldCenter}
@@ -99,6 +98,7 @@ export function GazaCrisisMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <ViewController gazaMode={gazaMode} />
+        <PopupCloser drawerOpen={drawerOpen} />
 
         <Polygon
           positions={GAZA_STRIP_POLYGON}
@@ -110,16 +110,13 @@ export function GazaCrisisMap({
             interactive: true,
           }}
           eventHandlers={{
-            click: () => {
-              onEnterGaza();
-            },
+            click: () => onEnterGaza(),
           }}
         >
           <Popup>
-            <div className="text-sm font-medium">Gaza focus area</div>
+            <div className="text-sm font-medium">Gaza Strip</div>
             <p className="mt-1 max-w-[200px] text-xs text-muted-foreground">
-              Demo map region. Click the shaded area to zoom in and view zones by
-              response urgency (time since report).
+              Click the Gaza view button or this area to zoom in.
             </p>
             {!gazaMode && (
               <button
@@ -133,102 +130,64 @@ export function GazaCrisisMap({
           </Popup>
         </Polygon>
 
-        {gazaMode &&
-          GAZA_SUB_ZONES.map((zone) => {
-            const inZone = incidentsInZone(incidents, zone.bounds);
-            const urgency = zoneDisplayUrgency(inZone);
-            const meta = urgency ? TIME_URGENCY_META[urgency] : null;
-            const fill = meta?.fill ?? "#64748b";
-            const stroke = meta?.stroke ?? "#475569";
-            const selected = selectedZoneId === zone.id;
-            const roundedPositions = boundsToRoundedPolygon(zone.bounds, 0.18);
-
-            const openDetails = () => {
-              onSelectZone(zone.id);
-              onSelectIncident(null);
-            };
-
-            return (
-              <Polygon
-                key={zone.id}
-                positions={roundedPositions}
-                pathOptions={{
-                  color: selected ? "#0f172a" : stroke,
-                  weight: selected ? 3 : 2,
-                  fillColor: fill,
-                  fillOpacity: selected ? 0.5 : 0.32,
-                  interactive: true,
-                }}
-                eventHandlers={{
-                  click: (e) => {
-                    L.DomEvent.stopPropagation(e as unknown as Event);
-                    openDetails();
-                  },
-                }}
-              >
-                <Tooltip direction="top" sticky opacity={0.95} className="zone-tooltip">
-                  <div className="min-w-[180px] py-1">
-                    <p className="font-semibold text-sm">{zone.name}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {inZone.length} incident{inZone.length === 1 ? "" : "s"} •{" "}
-                      {urgency
-                        ? `${TIME_URGENCY_META[urgency].label} (by report age)`
-                        : "No active incidents"}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        openDetails();
-                      }}
-                      className="mt-2 w-full rounded bg-primary px-2 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
-                    >
-                      Open details
-                    </button>
-                  </div>
-                </Tooltip>
-              </Polygon>
-            );
-          })}
-
-        {gazaMode &&
+        {
           incidents.map((inc) => {
-            const tier = getTimeUrgencyTier(inc.reportedAt);
-            const color = TIME_URGENCY_META[tier].marker;
+            const meta = CRITICALITY_META[inc.criticality];
+            const color = meta.marker;
             const selected = selectedIncidentId === inc.id;
+            const radiusM = inc.radiusKm ? inc.radiusKm * 1000 : 0;
+
             return (
-              <Marker
-                key={inc.id}
-                position={[inc.lat, inc.lng]}
-                icon={createIcon(color)}
-                zIndexOffset={selected ? 800 : 400}
-                eventHandlers={{
-                  click: () => {
-                    onSelectIncident(inc.id);
-                    const z = GAZA_SUB_ZONES.find((zone) =>
-                      pointInBounds(inc.lat, inc.lng, zone.bounds)
-                    );
-                    onSelectZone(z?.id ?? null);
-                  },
-                }}
-              >
-                <Popup>
-                  <div className="min-w-[160px]">
-                    <p className="font-semibold text-sm">{inc.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {TIME_URGENCY_META[tier].label}
-                    </p>
-                    <button
-                      type="button"
-                      className="mt-2 text-xs text-primary underline"
-                      onClick={() => onSelectIncident(inc.id)}
-                    >
-                      Open details
-                    </button>
-                  </div>
-                </Popup>
-              </Marker>
+              <React.Fragment key={inc.id}>
+                {radiusM > 0 && (
+                  <Circle
+                    center={[inc.lat, inc.lng]}
+                    radius={radiusM}
+                    pathOptions={{
+                      color: meta.stroke,
+                      fillColor: meta.fill,
+                      fillOpacity: 0.2,
+                      weight: 1,
+                    }}
+                  />
+                )}
+                <Marker
+                  position={[inc.lat, inc.lng]}
+                  icon={createIcon(color)}
+                  zIndexOffset={selected ? 800 : 400}
+                  eventHandlers={{
+                    mouseover: (e) => {
+                      e.target.openPopup();
+                    },
+                  }}
+                >
+                  <Popup
+                    closeButton={false}
+                    autoClose={false}
+                    className="incident-summary-popup"
+                    offset={[0, -12]}
+                  >
+                    <div className="min-w-[180px] py-1">
+                      <p className="font-semibold text-sm">{inc.title}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {meta.label} • {inc.casualtiesEstimate} casualties est.
+                      </p>
+                      <button
+                        type="button"
+                        className="mt-2 w-full rounded bg-primary px-2 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectIncident(inc.id);
+                          const z = getZoneForPoint(inc.lat, inc.lng);
+                          onSelectZone(z?.id ?? null);
+                        }}
+                      >
+                        Open details
+                      </button>
+                    </div>
+                  </Popup>
+                </Marker>
+              </React.Fragment>
             );
           })}
       </MapContainer>
