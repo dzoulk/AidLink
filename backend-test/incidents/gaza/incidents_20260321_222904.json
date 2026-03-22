@@ -1,0 +1,80 @@
+[
+  {
+    "incident_id": "af63429b-6ce8-4d0f-8c49-61dfffb066ba",
+    "region": "gaza",
+    "summary": "Reports indicate that people are trapped under rubble in North Gaza due to ongoing violent targeting, with a severe lack of ambulance, civil defense, or rescue teams available to respond.",
+    "time_of_incident": "2024-10-26T18:11:37.000Z",
+    "time_since_incident": "12275.3h",
+    "criticality": "cleanup",
+    "location_centre": {
+      "lat": 31.4,
+      "lon": 34.35
+    },
+    "location_radius_km": 2.0,
+    "location_source": "gemini",
+    "casualties_estimate": 40,
+    "casualties": "some",
+    "casualties_source": "gemini",
+    "manpower_needed_estimate": 100,
+    "manpower_needed": "large",
+    "manpower_source": "gemini",
+    "verification": "initial_reports",
+    "posts": [
+      "https://x.com/MhmdRahman900/status/1850238873323868425"
+    ],
+    "media": [],
+    "last_updated": "2026-03-22T05:14:05.288535"
+  },
+  {
+    "incident_id": "a895aa16-9174-43cd-8992-a2ac48b68d3a",
+    "region": "gaza",
+    "summary": "Reports indicate that children are still trapped under rubble in Palestine, implicitly referring to the Gaza Strip.",
+    "time_of_incident": "2026-03-22T05:16:19.000Z",
+    "time_since_incident": "0.2h",
+    "criticality": "critical",
+    "location_centre": {
+      "lat": 31.4,
+      "lon": 34.35
+    },
+    "location_radius_km": 2.0,
+    "location_source": "gemini",
+    "casualties_estimate": 10,
+    "casualties": "some",
+    "casualties_source": "gemini",
+    "manpower_needed_estimate": 30,
+    "manpower_needed": "large",
+    "manpower_source": "gemini",
+    "verification": "initial_reports",
+    "posts": [
+      "https://x.com/sweety55_/status/2035586350393516439"
+    ],
+    "media": [],
+    "last_updated": "2026-03-22T05:29:04.290619"
+  },
+  {
+    "incident_id": "f6289469-751f-4e68-a8d0-db94c40517b4",
+    "region": "gaza",
+    "summary": "A building in Gaza reportedly collapsed after being hit from the air, with witnesses describing the destruction as similar to 9/11.",
+    "time_of_incident": "2026-03-20T20:48:35.000Z",
+    "time_since_incident": "32.7h",
+    "criticality": "needs_support",
+    "location_centre": {
+      "lat": 31.4,
+      "lon": 34.35
+    },
+    "location_radius_km": 0.5,
+    "location_source": "gemini",
+    "casualties_estimate": 5,
+    "casualties": "few",
+    "casualties_source": "gemini",
+    "manpower_needed_estimate": 10,
+    "manpower_needed": "moderate",
+    "manpower_source": "gemini",
+    "verification": "initial_reports",
+    "posts": [
+      "https://x.com/cindy1120652463/status/2035096185048801655"
+    ],
+    "media": [],
+    "last_updated": "2026-03-22T05:29:04.290801"
+  }
+]

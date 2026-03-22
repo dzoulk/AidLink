@@ -1,0 +1,56 @@
+[
+  {
+    "incident_id": "36c032ac-78b0-4766-b800-529087638cae",
+    "region": "iran",
+    "summary": "The Fars provincial police headquarters, a multi-story building in Shiraz, sustained heavy damage and structural collapse following US-Israeli airstrikes.",
+    "time_of_incident": "2026-03-21T21:11:52.000Z",
+    "time_since_incident": "8.7h",
+    "criticality": "critical",
+    "location_centre": {
+      "lat": 29.5918,
+      "lon": 52.5837
+    },
+    "location_radius_km": 0.1,
+    "location_source": "gemini",
+    "casualties_estimate": 1,
+    "casualties": "few",
+    "casualties_source": "gemini",
+    "manpower_needed_estimate": 15,
+    "manpower_needed": "moderate",
+    "manpower_source": "gemini",
+    "verification": "initial_reports",
+    "posts": [
+      "https://x.com/SyedHam02499189/status/2035449965518959070",
+      "https://x.com/SedAliBegas/status/2035592367190011929",
+      "https://x.com/grok/status/2035464434294931823"
+    ],
+    "media": [],
+    "last_updated": "2026-03-22T05:54:09.352410"
+  },
+  {
+    "incident_id": "72b0b1d0-4eee-4e3e-971f-e2008197a127",
+    "region": "iran",
+    "summary": "Rescue teams, including specialized rubble units and search dogs, successfully extracted one person alive from under rubble on the fourth floor of a residential building in Tehran.",
+    "time_of_incident": "2026-03-19T09:07:10.000Z",
+    "time_since_incident": "68.8h",
+    "criticality": "needs_support",
+    "location_centre": {
+      "lat": 35.6892,
+      "lon": 51.389
+    },
+    "location_radius_km": 0.1,
+    "location_source": "gemini",
+    "casualties_estimate": 1,
+    "casualties": "few",
+    "casualties_source": "gemini",
+    "manpower_needed_estimate": 12,
+    "manpower_needed": "moderate",
+    "manpower_source": "gemini",
+    "verification": "initial_reports",
+    "posts": [
+      "https://x.com/Iranian_RCS/status/2034557280734130307"
+    ],
+    "media": [],
+    "last_updated": "2026-03-22T05:15:35.649931"
+  }
+]

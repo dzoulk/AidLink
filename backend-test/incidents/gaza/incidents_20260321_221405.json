@@ -1,0 +1,28 @@
+[
+  {
+    "incident_id": "af63429b-6ce8-4d0f-8c49-61dfffb066ba",
+    "region": "gaza",
+    "summary": "Reports indicate that people are trapped under rubble in North Gaza due to ongoing violent targeting, with a severe lack of ambulance, civil defense, or rescue teams available to respond.",
+    "time_of_incident": "2024-10-26T18:11:37.000Z",
+    "time_since_incident": "12275.0h",
+    "criticality": "cleanup",
+    "location_centre": {
+      "lat": 31.4,
+      "lon": 34.35
+    },
+    "location_radius_km": 2.0,
+    "location_source": "gemini",
+    "casualties_estimate": 40,
+    "casualties": "some",
+    "casualties_source": "gemini",
+    "manpower_needed_estimate": 100,
+    "manpower_needed": "large",
+    "manpower_source": "gemini",
+    "verification": "initial_reports",
+    "posts": [
+      "https://x.com/MhmdRahman900/status/1850238873323868425"
+    ],
+    "media": [],
+    "last_updated": "2026-03-22T05:14:05.288535"
+  }
+]
