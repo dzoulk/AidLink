@@ -56,11 +56,25 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
-  const { incidentId, region, summary } = body;
+  const {
+    incidentId,
+    region,
+    summary,
+    time_of_incident,
+    location_lat,
+    location_lon,
+    location_radius_km,
+    casualties_estimate,
+    casualties,
+    manpower_needed_estimate,
+    manpower_needed,
+    criticality,
+    verification,
+  } = body;
 
-  if (!incidentId || !region || typeof summary !== "string") {
+  if (!incidentId || !region) {
     return NextResponse.json(
-      { error: "incidentId, region, and summary required" },
+      { error: "incidentId and region required" },
       { status: 400 }
     );
   }
@@ -80,10 +94,36 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
+  const update: Record<string, unknown> = {
+    last_updated: new Date().toISOString(),
+  };
+  if (typeof summary === "string") update.summary = summary.trim();
+  if (time_of_incident != null) update.time_of_incident = time_of_incident;
+  if (typeof location_lat === "number") update.location_lat = location_lat;
+  if (typeof location_lon === "number") update.location_lon = location_lon;
+  if (location_radius_km != null) update.location_radius_km = Number(location_radius_km);
+  if (typeof casualties_estimate === "number") update.casualties_estimate = casualties_estimate;
+  const casualtiesStr = String(casualties);
+  if (["few", "some", "many"].includes(casualtiesStr)) update.casualties = casualtiesStr;
+  if (typeof manpower_needed_estimate === "number") update.manpower_needed_estimate = manpower_needed_estimate;
+  const manpowerStr = String(manpower_needed);
+  if (["small", "moderate", "large"].includes(manpowerStr)) update.manpower_needed = manpowerStr;
+  const criticalityStr = String(criticality);
+  if (["critical", "needs_support", "cleanup"].includes(criticalityStr)) update.criticality = criticalityStr;
+  const verificationStr = String(verification);
+  if (["initial_reports", "confident", "verified"].includes(verificationStr)) update.verification = verificationStr;
+
+  if (Object.keys(update).length <= 1) {
+    return NextResponse.json(
+      { error: "No updatable fields provided" },
+      { status: 400 }
+    );
+  }
+
   try {
     const { error } = await supabase
       .from(table)
-      .update({ summary: summary.trim(), last_updated: new Date().toISOString() })
+      .update(update)
       .eq("incident_id", incidentId);
 
     if (error) {

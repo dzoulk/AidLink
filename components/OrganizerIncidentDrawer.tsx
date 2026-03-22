@@ -26,6 +26,18 @@ const VERIFICATION_STYLES: Record<string, string> = {
   VERIFIED: "border-green-300 bg-green-500/15 text-green-700",
 };
 
+export type OrganizerIncidentUpdates = Partial<{
+  title: string;
+  description: string;
+  locationName: string;
+  lat: number;
+  lng: number;
+  reportedAt: string;
+  volunteersNeeded: number;
+  injuriesReported: number;
+  verificationStatus: string;
+}>;
+
 interface OrganizerIncidentDrawerProps {
   incident: Incident;
   interestedCount: number;
@@ -37,6 +49,7 @@ interface OrganizerIncidentDrawerProps {
   onEdit?: (incident: Incident) => void;
   onCheckIn?: () => void;
   onSummarySave?: (incidentId: string, summary: string) => void | Promise<void>;
+  onUpdate?: (incidentId: string, updates: OrganizerIncidentUpdates) => void | Promise<void>;
   assignmentPanel?: React.ReactNode;
 }
 
@@ -77,14 +90,32 @@ export function OrganizerIncidentDrawer({
   onEdit,
   onCheckIn,
   onSummarySave,
+  onUpdate,
   assignmentPanel,
 }: OrganizerIncidentDrawerProps) {
+  const isEditable = Boolean(onUpdate);
+  const [titleDraft, setTitleDraft] = useState<string>(incident.title);
   const [summaryDraft, setSummaryDraft] = useState<string>(incident.description ?? "");
-  const [isSavingSummary, setIsSavingSummary] = useState(false);
+  const [locationDraft, setLocationDraft] = useState<string>(incident.locationName);
+  const [latDraft, setLatDraft] = useState<string>(String(incident.lat));
+  const [lngDraft, setLngDraft] = useState<string>(String(incident.lng));
+  const [reportedAtDraft, setReportedAtDraft] = useState<string>(
+    incident.reportedAt ? new Date(incident.reportedAt).toISOString().slice(0, 16) : ""
+  );
+  const [volunteersDraft, setVolunteersDraft] = useState<number>(incident.volunteersNeeded);
+  const [injuriesDraft, setInjuriesDraft] = useState<number>(incident.injuriesReported);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    setTitleDraft(incident.title);
     setSummaryDraft(incident.description ?? "");
-  }, [incident.description]);
+    setLocationDraft(incident.locationName);
+    setLatDraft(String(incident.lat));
+    setLngDraft(String(incident.lng));
+    setReportedAtDraft(incident.reportedAt ? new Date(incident.reportedAt).toISOString().slice(0, 16) : "");
+    setVolunteersDraft(incident.volunteersNeeded);
+    setInjuriesDraft(incident.injuriesReported);
+  }, [incident]);
   const tier = getTimeUrgencyTier(incident.reportedAt);
   const criticality =
     tier === "CRITICAL"
@@ -99,20 +130,55 @@ export function OrganizerIncidentDrawer({
   const currentLabel = VERIFICATION_OPTIONS.find((o) => o.value === currentVerification)?.label ?? "Initial";
 
   const handleEdit = () => onEdit?.(incident);
+  const summarySave = onSummarySave ?? (onUpdate ? (id: string, s: string) => onUpdate(id, { description: s }) : undefined);
 
   const saveSummary = useCallback(async () => {
-    if (!onSummarySave || summaryDraft === (incident.description ?? "")) return;
-    setIsSavingSummary(true);
+    if (!summarySave || summaryDraft === (incident.description ?? "")) return;
+    setIsSaving(true);
     try {
-      await onSummarySave(incident.id, summaryDraft);
+      await summarySave(incident.id, summaryDraft);
     } finally {
-      setIsSavingSummary(false);
+      setIsSaving(false);
     }
-  }, [incident.id, incident.description, onSummarySave, summaryDraft]);
+  }, [incident.id, incident.description, summarySave, summaryDraft]);
 
   const handleSummaryBlur = () => {
     if (summaryDraft !== (incident.description ?? "")) saveSummary();
   };
+
+  const saveAll = useCallback(async () => {
+    if (!onUpdate) return;
+    const updates: OrganizerIncidentUpdates = {};
+    if (titleDraft !== incident.title) updates.title = titleDraft;
+    if (summaryDraft !== (incident.description ?? "")) updates.description = summaryDraft;
+    if (locationDraft !== incident.locationName) updates.locationName = locationDraft;
+    const latVal = parseFloat(latDraft);
+    const lngVal = parseFloat(lngDraft);
+    if (!isNaN(latVal) && latVal !== incident.lat) updates.lat = latVal;
+    if (!isNaN(lngVal) && lngVal !== incident.lng) updates.lng = lngVal;
+    const reportedAtVal = reportedAtDraft ? new Date(reportedAtDraft).toISOString() : null;
+    if (reportedAtVal && reportedAtVal !== incident.reportedAt.toISOString()) updates.reportedAt = reportedAtVal;
+    if (volunteersDraft !== incident.volunteersNeeded) updates.volunteersNeeded = volunteersDraft;
+    if (injuriesDraft !== incident.injuriesReported) updates.injuriesReported = injuriesDraft;
+    if (Object.keys(updates).length === 0) return;
+    setIsSaving(true);
+    try {
+      await onUpdate(incident.id, updates);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [
+    onUpdate,
+    incident,
+    titleDraft,
+    summaryDraft,
+    locationDraft,
+    latDraft,
+    lngDraft,
+    reportedAtDraft,
+    volunteersDraft,
+    injuriesDraft,
+  ]);
 
   return (
     <div
@@ -123,7 +189,15 @@ export function OrganizerIncidentDrawer({
     >
       <div className="sticky top-0 z-10 flex shrink-0 flex-col gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="flex items-start justify-between gap-2">
-          <h2 className="line-clamp-2 flex-1 text-lg font-semibold">{incident.title}</h2>
+          {isEditable ? (
+            <input
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              className="flex-1 text-lg font-semibold bg-transparent border-b border-transparent hover:border-border focus:border-input focus:outline-none px-0 py-0"
+            />
+          ) : (
+            <h2 className="line-clamp-2 flex-1 text-lg font-semibold">{incident.title}</h2>
+          )}
           <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
           </Button>
@@ -167,7 +241,7 @@ export function OrganizerIncidentDrawer({
       <div className="space-y-5 p-5">
         <div className="rounded-xl border bg-card/50 p-4 text-sm shadow-sm">
           <p className="font-medium text-muted-foreground mb-2">Summary</p>
-          {onSummarySave ? (
+          {(summarySave || onUpdate) ? (
             <>
               <textarea
                 value={summaryDraft}
@@ -177,14 +251,14 @@ export function OrganizerIncidentDrawer({
                 rows={4}
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px] resize-y"
               />
-              {summaryDraft !== (incident.description ?? "") && (
+              {!isEditable && summaryDraft !== (incident.description ?? "") && (
                 <Button
                   size="sm"
                   className="mt-2"
-                  disabled={isSavingSummary}
+                  disabled={isSaving}
                   onClick={saveSummary}
                 >
-                  {isSavingSummary ? "Saving…" : "Save summary"}
+                  {isSaving ? "Saving…" : "Save summary"}
                 </Button>
               )}
             </>
@@ -193,43 +267,107 @@ export function OrganizerIncidentDrawer({
           )}
         </div>
 
-        <EditableBox onEdit={handleEdit}>
-          <div className="rounded-xl border bg-card/50 p-4 text-sm shadow-sm">
-            <p className="font-medium text-muted-foreground">Time of incident</p>
-            <p className="font-medium pr-8">{new Date(incident.reportedAt).toLocaleString()}</p>
-          </div>
-        </EditableBox>
+        <div className="rounded-xl border bg-card/50 p-4 text-sm shadow-sm">
+          <p className="font-medium text-muted-foreground mb-2">Time of incident</p>
+          {isEditable ? (
+            <input
+              type="datetime-local"
+              value={reportedAtDraft}
+              onChange={(e) => setReportedAtDraft(e.target.value)}
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            />
+          ) : (
+            <p className="font-medium">{new Date(incident.reportedAt).toLocaleString()}</p>
+          )}
+        </div>
 
-        <EditableBox onEdit={handleEdit}>
-          <div className="rounded-xl border bg-card/50 p-4 text-sm shadow-sm">
-            <p className="font-medium text-muted-foreground">Location</p>
-            <p className="font-medium pr-8">{incident.locationName}</p>
-            <p className="mt-1 text-xs text-muted-foreground pr-8">
-              {incident.lat.toFixed(4)}, {incident.lng.toFixed(4)}
-            </p>
-          </div>
-        </EditableBox>
+        <div className="rounded-xl border bg-card/50 p-4 text-sm shadow-sm">
+          <p className="font-medium text-muted-foreground mb-2">Location</p>
+          {isEditable ? (
+            <div className="space-y-2">
+              <input
+                value={locationDraft}
+                onChange={(e) => setLocationDraft(e.target.value)}
+                placeholder="Location name"
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  step="any"
+                  value={latDraft}
+                  onChange={(e) => setLatDraft(e.target.value)}
+                  placeholder="Lat"
+                  className="flex flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+                <input
+                  type="number"
+                  step="any"
+                  value={lngDraft}
+                  onChange={(e) => setLngDraft(e.target.value)}
+                  placeholder="Lng"
+                  className="flex flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="font-medium">{incident.locationName}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {incident.lat.toFixed(4)}, {incident.lng.toFixed(4)}
+              </p>
+            </>
+          )}
+        </div>
 
-        <EditableBox onEdit={handleEdit}>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded-xl border bg-muted/30 p-4 shadow-sm">
-              <p className="text-muted-foreground">Volunteers needed</p>
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="rounded-xl border bg-muted/30 p-4 shadow-sm">
+            <p className="text-muted-foreground">Volunteers needed</p>
+            {isEditable ? (
+              <input
+                type="number"
+                min={0}
+                value={volunteersDraft}
+                onChange={(e) => setVolunteersDraft(parseInt(e.target.value, 10) || 0)}
+                className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1 text-lg font-semibold"
+              />
+            ) : (
               <p className="text-lg font-semibold">{incident.volunteersNeeded}</p>
-            </div>
-            <div className="rounded-xl border bg-muted/30 p-4 shadow-sm">
-              <p className="text-muted-foreground">Confirmed</p>
-              <p className="text-lg font-semibold">{confirmedCount}</p>
-            </div>
-            <div className="rounded-xl border bg-muted/30 p-4 shadow-sm">
-              <p className="text-muted-foreground">Checked In</p>
-              <p className="text-lg font-semibold">{checkedInCount}</p>
-            </div>
-            <div className="rounded-xl border bg-muted/30 p-4 shadow-sm">
-              <p className="text-muted-foreground">Interested</p>
-              <p className="text-lg font-semibold">{interestedCount}</p>
-            </div>
+            )}
           </div>
-        </EditableBox>
+          <div className="rounded-xl border bg-muted/30 p-4 shadow-sm">
+            <p className="text-muted-foreground">Casualties (est.)</p>
+            {isEditable ? (
+              <input
+                type="number"
+                min={0}
+                value={injuriesDraft}
+                onChange={(e) => setInjuriesDraft(parseInt(e.target.value, 10) || 0)}
+                className="mt-1 w-full rounded-md border border-input bg-background px-2 py-1 text-lg font-semibold"
+              />
+            ) : (
+              <p className="text-lg font-semibold">{incident.injuriesReported}</p>
+            )}
+          </div>
+          <div className="rounded-xl border bg-muted/30 p-4 shadow-sm">
+            <p className="text-muted-foreground">Confirmed</p>
+            <p className="text-lg font-semibold">{confirmedCount}</p>
+          </div>
+          <div className="rounded-xl border bg-muted/30 p-4 shadow-sm">
+            <p className="text-muted-foreground">Checked In</p>
+            <p className="text-lg font-semibold">{checkedInCount}</p>
+          </div>
+          <div className="rounded-xl border bg-muted/30 p-4 shadow-sm">
+            <p className="text-muted-foreground">Interested</p>
+            <p className="text-lg font-semibold">{interestedCount}</p>
+          </div>
+        </div>
+
+        {isEditable && (
+          <Button size="sm" className="w-full" disabled={isSaving} onClick={saveAll}>
+            {isSaving ? "Saving…" : "Save all changes"}
+          </Button>
+        )}
 
         {incident.safetyNote && (
           <EditableBox onEdit={handleEdit}>

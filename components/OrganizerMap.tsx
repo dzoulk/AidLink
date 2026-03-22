@@ -208,6 +208,28 @@ export function OrganizerMap({ region, lang }: OrganizerMapProps) {
     fetchDashboard();
   };
 
+  const handleOrganizerUpdate = async (
+    incidentId: string,
+    updates: {
+      title?: string;
+      description?: string;
+      locationName?: string;
+      lat?: number;
+      lng?: number;
+      reportedAt?: string;
+      volunteersNeeded?: number;
+      injuriesReported?: number;
+      verificationStatus?: string;
+    }
+  ) => {
+    await fetch("/api/dashboard/incidents", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ incidentId, ...updates }),
+    });
+    fetchDashboard();
+  };
+
   const handleEditSave = async (
     id: string,
     data: {
@@ -353,6 +375,7 @@ export function OrganizerMap({ region, lang }: OrganizerMapProps) {
               setEditModalOpen(true);
             }}
             onSummarySave={handleSummarySave}
+            onUpdate={handleOrganizerUpdate}
             onCheckIn={
               selectedPrismaIncident.checkInCode
                 ? () => setCheckInOpen(true)
@@ -380,17 +403,26 @@ export function OrganizerMap({ region, lang }: OrganizerMapProps) {
               setSelectedId(null);
               setJsonFallbackIncidents((prev) => prev.filter((i) => i.id !== id));
             }}
-            onSummarySave={
+            onUpdate={
               supabaseIncidents.length > 0
-                ? async (incidentId, summary) => {
+                ? async (incidentId, updates) => {
+                    const body: Record<string, unknown> = { incidentId, region };
+                    if (updates.summary != null) body.summary = updates.summary;
+                    if (updates.reportedAt != null) body.time_of_incident = updates.reportedAt;
+                    if (updates.lat != null) body.location_lat = updates.lat;
+                    if (updates.lng != null) body.location_lon = updates.lng;
+                    if (updates.radiusKm != null) body.location_radius_km = updates.radiusKm;
+                    if (updates.casualtiesEstimate != null) body.casualties_estimate = updates.casualtiesEstimate;
+                    if (updates.casualtiesCategory != null) body.casualties = updates.casualtiesCategory;
+                    if (updates.manpowerEstimate != null) body.manpower_needed_estimate = updates.manpowerEstimate;
+                    if (updates.manpowerCategory != null) body.manpower_needed = updates.manpowerCategory;
+                    if (updates.criticality != null)
+                      body.criticality = updates.criticality.replace(" ", "_") as "critical" | "needs_support" | "cleanup";
+                    if (updates.verification != null) body.verification = updates.verification;
                     await fetch("/api/incidents-supabase", {
                       method: "PATCH",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        incidentId,
-                        region,
-                        summary,
-                      }),
+                      body: JSON.stringify(body),
                     });
                     fetchDashboard();
                   }
