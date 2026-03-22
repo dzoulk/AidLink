@@ -38,7 +38,6 @@ export default function IncidentReportDetailPage() {
         navItems={[
           { href: "/", label: "Home" },
           { href: "/map", label: "Crisis Map" },
-          { href: "/volunteer", label: "Volunteer" },
         ]}
       />
 
@@ -81,7 +80,7 @@ export default function IncidentReportDetailPage() {
               </div>
               <div>
                 <p className="font-medium text-muted-foreground">Injuries (reported estimate)</p>
-                <p>{data.injuriesReported ?? 0}</p>
+                <p>{(data as Incident & { injuriesReported?: number }).injuriesReported ?? 0}</p>
               </div>
               {data.description && (
                 <div>

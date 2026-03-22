@@ -5,9 +5,9 @@ import dynamic from "next/dynamic";
 import { SiteHeader } from "@/components/SiteHeader";
 import { MapIncidentDrawer } from "@/components/MapIncidentDrawer";
 import { GazaZonePanelMapIncident } from "@/components/GazaZonePanelMapIncident";
+import { OpenIncidentsPanel } from "@/components/OpenIncidentsPanel";
 import { Button } from "@/components/ui/button";
 import { pointInBounds, GAZA_FLY_BOUNDS } from "@/lib/gaza-zones";
-import { CRITICALITY_META } from "@/lib/criticality-meta";
 import { jsonToMapIncident, prismaToMapIncident } from "@/lib/incident-adapters";
 import type { Incident } from "@prisma/client";
 import type { MapIncident, IncidentJson } from "@/types/incident-json";
@@ -76,7 +76,6 @@ export default function PublicMapPage() {
       <SiteHeader
         navItems={[
           { href: "/", label: "Home" },
-          { href: "/volunteer", label: "Volunteer" },
         ]}
       />
 
@@ -141,32 +140,15 @@ export default function PublicMapPage() {
         )}
       </div>
 
-      <div className="pointer-events-none absolute left-4 top-32 z-[1000] max-w-[calc(100vw-2rem)] rounded-xl border bg-background/95 p-4 text-sm shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:top-36">
-        <p className="pointer-events-auto font-medium">Criticality (by time since incident)</p>
-        <div className="pointer-events-auto mt-2 flex flex-wrap gap-x-4 gap-y-1.5">
-          <span className="flex items-center gap-1.5 whitespace-nowrap">
-            <span
-              className="h-2.5 w-2.5 shrink-0 rounded-full"
-              style={{ background: CRITICALITY_META.critical.marker }}
-            />
-            Critical
-          </span>
-          <span className="flex items-center gap-1.5 whitespace-nowrap">
-            <span
-              className="h-2.5 w-2.5 shrink-0 rounded-full"
-              style={{ background: CRITICALITY_META["needs support"].marker }}
-            />
-            Needs Support
-          </span>
-          <span className="flex items-center gap-1.5 whitespace-nowrap">
-            <span
-              className="h-2.5 w-2.5 shrink-0 rounded-full"
-              style={{ background: CRITICALITY_META.cleanup.marker }}
-            />
-            Clean Up
-          </span>
-        </div>
-      </div>
+      {!selected && !selectedZoneId && (
+        <OpenIncidentsPanel
+          mapIncidents={mapIncidents}
+          onSelectIncident={(id) => {
+            setSelectedId(id);
+            setGazaMode(true);
+          }}
+        />
+      )}
     </div>
   );
 }

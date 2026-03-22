@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { VerificationBadge } from "@/components/VerificationBadge";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { Badge } from "@/components/ui/badge";
-import type { Incident } from "@prisma/client";
+import type { DisplayIncident } from "@/lib/incident-feed-utils";
 import { MapPin, Users, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +15,7 @@ const OP_STATUS_LABELS: Record<string, string> = {
 };
 
 interface IncidentCardProps {
-  incident: Incident;
+  incident: DisplayIncident;
   interestedCount?: number;
   confirmedCount?: number;
   checkedInCount?: number;

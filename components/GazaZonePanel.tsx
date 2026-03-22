@@ -51,7 +51,7 @@ export function GazaZonePanel({
   );
 
   const injuriesTotal = inZone.reduce(
-    (acc, inc) => acc + (inc.injuriesReported ?? 0),
+    (acc, inc) => acc + ((inc as { injuriesReported?: number }).injuriesReported ?? 0),
     0
   );
 

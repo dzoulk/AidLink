@@ -52,6 +52,26 @@ function PopupCloser({ drawerOpen }: { drawerOpen: boolean }) {
   return null;
 }
 
+function FlyToSelected({
+  incidentId,
+  incidents,
+}: {
+  incidentId: string | null;
+  incidents: MapIncident[];
+}) {
+  const map = useMap();
+  useEffect(() => {
+    if (!incidentId) return;
+    const inc = incidents.find((i) => i.id === incidentId);
+    if (!inc) return;
+    const t = setTimeout(() => {
+      map.flyTo([inc.lat, inc.lng], 14, { duration: 0.9, easeLinearity: 0.25 });
+    }, 100);
+    return () => clearTimeout(t);
+  }, [incidentId, incidents, map]);
+  return null;
+}
+
 interface GazaCrisisMapProps {
   incidents: MapIncident[];
   gazaMode: boolean;
@@ -99,6 +119,7 @@ export function GazaCrisisMap({
         />
         <ViewController gazaMode={gazaMode} />
         <PopupCloser drawerOpen={drawerOpen} />
+        <FlyToSelected incidentId={selectedIncidentId} incidents={incidents} />
 
         <Polygon
           positions={GAZA_STRIP_POLYGON}

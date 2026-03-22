@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SafetyNotice } from "@/components/SafetyNotice";
-import { Map, Users, LayoutDashboard, Shield } from "lucide-react";
+import { Map, LayoutDashboard, Shield, Users } from "lucide-react";
 
 export default function LandingPage() {
   return (
@@ -10,7 +10,6 @@ export default function LandingPage() {
       <SiteHeader
         navItems={[
           { href: "/map", label: "Crisis Map" },
-          { href: "/volunteer", label: "Volunteer" },
         ]}
       />
 
@@ -30,12 +29,6 @@ export default function LandingPage() {
                 <Button size="lg" className="gap-2">
                   <Map className="h-4 w-4" />
                   View Crisis Map
-                </Button>
-              </Link>
-              <Link href="/volunteer">
-                <Button variant="outline" size="lg" className="gap-2">
-                  <Users className="h-4 w-4" />
-                  Volunteer
                 </Button>
               </Link>
               <Link href="/dashboard">

@@ -63,6 +63,12 @@
   z-index: 0;
 }
 
+/* Zoom controls: top-right corner (avoids overlap with Criticality legend) */
+.leaflet-top.leaflet-left {
+  left: auto !important;
+  right: 10px !important;
+}
+
 /* Custom marker reset */
 .custom-marker {
   background: none !important;
