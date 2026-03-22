@@ -4,7 +4,7 @@
     "region": "iran",
     "summary": "The Fars provincial police headquarters, a multi-story building in Shiraz, sustained heavy damage and structural collapse following US-Israeli airstrikes.",
     "time_of_incident": "2026-03-21T21:11:52.000Z",
-    "time_since_incident": "14.4h",
+    "time_since_incident": "13.9h",
     "criticality": "critical",
     "location_centre": {
       "lat": 29.5918,
@@ -34,7 +34,7 @@
     "region": "iran",
     "summary": "Rescue teams, including specialized rubble units and search dogs, successfully extracted one person alive from under rubble on the fourth floor of a residential building in Tehran.",
     "time_of_incident": "2026-03-19T09:07:10.000Z",
-    "time_since_incident": "74.4h",
+    "time_since_incident": "74.0h",
     "criticality": "cleanup",
     "location_centre": {
       "lat": 35.6892,
@@ -60,12 +60,12 @@
     "region": "iran",
     "summary": "Iran's Red Crescent Society is actively recovering the bodies of a mother and infant from under rubble following an unspecified incident.",
     "time_of_incident": "2026-03-22T11:03:34.000Z",
-    "time_since_incident": "0.5h",
+    "time_since_incident": "0.1h",
     "location_centre": {
       "lat": 32.4,
       "lon": 53.7
     },
-    "location_radius_km": 50.0,
+    "location_radius_km": 200.0,
     "location_source": "gemini",
     "casualties_estimate": 2,
     "casualties": "few",
@@ -75,19 +75,15 @@
     "manpower_source": "gemini",
     "verification": "initial_reports",
     "posts": [
-      "https://x.com/saman_ism/status/2035673997778538549",
-      "https://x.com/Moallaq_/status/2035676484963033428",
       "https://x.com/saman_ism/status/2035673735559037264"
     ],
     "media": [],
-    "last_updated": "2026-03-22T11:33:07.914594",
+    "last_updated": "2026-03-22T11:06:59.302579",
     "time_source": "post_timestamp",
     "criticality": "cleanup",
     "criticality_reason": "The Iranian Red Crescent is actively recovering bodies from under rubble, indicating the immediate rescue phase is likely over and recovery efforts are underway.",
-    "confidence": "confident",
-    "confidence_score": 0.8,
-    "confidence_reason": "A single tweet mentions the Iranian Red Crescent pulling bodies from under rubble but lacks specific location and corroborating details.",
-    "criticality_source": "gemini",
-    "confidence_source": "gemini"
+    "confidence": "unsure",
+    "confidence_score": 0.2,
+    "confidence_reason": "A single tweet mentions the Iranian Red Crescent pulling bodies from under rubble but lacks specific location and corroborating details."
   }
 ]
