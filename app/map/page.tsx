@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { SiteHeader } from "@/components/SiteHeader";
 import { MapIncidentDrawer } from "@/components/MapIncidentDrawer";
 import { GazaZonePanelMapIncident } from "@/components/GazaZonePanelMapIncident";
 import { OpenIncidentsPanel } from "@/components/OpenIncidentsPanel";
 import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
 import { pointInBounds, GAZA_FLY_BOUNDS } from "@/lib/gaza-zones";
 import { jsonToMapIncident, prismaToMapIncident } from "@/lib/incident-adapters";
 import type { Incident } from "@prisma/client";
@@ -37,7 +38,12 @@ export default function PublicMapPage() {
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [gazaMode, setGazaMode] = useState(false);
 
-  useEffect(() => {
+  const selected = useMemo(
+    () => mapIncidents.find((i) => i.id === selectedId) ?? null,
+    [mapIncidents, selectedId]
+  );
+
+  const fetchIncidents = useCallback(() => {
     fetch("/api/incidents-json")
       .then((r) => r.json())
       .then((data: { incidents?: IncidentJson[] }) => {
@@ -66,10 +72,9 @@ export default function PublicMapPage() {
       .catch(() => setMapIncidents([]));
   }, []);
 
-  const selected = useMemo(
-    () => mapIncidents.find((i) => i.id === selectedId) ?? null,
-    [mapIncidents, selectedId]
-  );
+  useEffect(() => {
+    fetchIncidents();
+  }, [fetchIncidents]);
 
   return (
     <div className="flex h-screen flex-col">
@@ -103,6 +108,16 @@ export default function PublicMapPage() {
               World map
             </Button>
           )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => fetchIncidents()}
+            className="gap-1.5"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Refresh
+          </Button>
           <span className="text-muted-foreground">
             {gazaMode
               ? "Hover a marker for summary • Click Open details for full panel"

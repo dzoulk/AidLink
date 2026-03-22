@@ -26,12 +26,10 @@ export function SiteHeader({ navItems, className }: SiteHeaderProps) {
           aria-label="Main"
         >
           {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              {item.label}
+            <Link key={item.href} href={item.href} className="shrink-0">
+              <Button variant="outline" size="sm">
+                {item.label}
+              </Button>
             </Link>
           ))}
           <Link href="/dashboard" className="shrink-0">

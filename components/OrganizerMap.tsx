@@ -14,7 +14,7 @@ import { EditIncidentModal } from "@/components/EditIncidentModal";
 import { GazaZonePanelMapIncident } from "@/components/GazaZonePanelMapIncident";
 import { pointInBounds, GAZA_FLY_BOUNDS, getZoneForPoint } from "@/lib/gaza-zones";
 import { jsonToMapIncident, prismaToMapIncident } from "@/lib/incident-adapters";
-import { LogOut } from "lucide-react";
+import { LogOut, RefreshCw } from "lucide-react";
 import type { Incident, VolunteerProfile, Assignment } from "@prisma/client";
 import type { MapIncident, IncidentJson } from "@/types/incident-json";
 
@@ -223,20 +223,26 @@ export function OrganizerMap() {
   return (
     <div className="flex h-screen flex-col">
       <header className="shrink-0 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="flex items-center justify-between gap-4">
-          <Link href="/" className="shrink-0 font-bold text-xl tracking-tight">
+        <div className="container flex h-14 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          <Link href="/" className="ml-2 shrink-0 font-bold text-xl tracking-tight sm:ml-4">
             AidLink
           </Link>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-muted-foreground">Organizer Map</span>
-            <Button variant="ghost" size="sm" onClick={refresh}>
-              Refresh
-            </Button>
+          <nav className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2 sm:gap-x-4">
+            <Link href="/" className="shrink-0">
+              <Button variant="outline" size="sm">
+                Home
+              </Button>
+            </Link>
+            <Link href="/map" className="shrink-0">
+              <Button variant="outline" size="sm">
+                Crisis Map
+              </Button>
+            </Link>
             <Button variant="ghost" size="sm" onClick={logout} className="gap-1">
               <LogOut className="h-4 w-4" />
               Log out
             </Button>
-          </div>
+          </nav>
         </div>
       </header>
 
@@ -263,6 +269,16 @@ export function OrganizerMap() {
             World map
           </Button>
         )}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={refresh}
+          className="gap-1.5"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          Refresh
+        </Button>
         <span className="text-muted-foreground">
           {gazaMode
             ? "Hover a marker for summary • Click Open details for full panel"
