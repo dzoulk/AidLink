@@ -9,8 +9,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { X, ExternalLink, Trash2 } from "lucide-react";
-import type { MapIncident, CriticalityTier, CasualtiesCategory, ManpowerCategory } from "@/types/incident-json";
+import { X, ExternalLink, Trash2, ChevronDown } from "lucide-react";
+import type {
+  MapIncident,
+  CriticalityTier,
+  CasualtiesCategory,
+  ManpowerCategory,
+  VerificationLevel,
+} from "@/types/incident-json";
 import { CRITICALITY_META } from "@/lib/criticality-meta";
 import { useLanguageStore } from "@/lib/language-store";
 import { t, getCriticalityLabel, type TranslationKey } from "@/lib/translations";
@@ -42,6 +48,20 @@ const CRITICALITY_OPTIONS: CriticalityTier[] = ["critical", "needs support", "cl
 const CASUALTIES_OPTIONS: CasualtiesCategory[] = ["few", "some", "many"];
 const MANPOWER_OPTIONS: ManpowerCategory[] = ["small", "moderate", "large"];
 
+/** Map API variants (e.g. needs_support) to canonical tier so native <select> value always matches an <option>. */
+function normalizeCriticality(raw: string): CriticalityTier {
+  const s = String(raw).toLowerCase().replace(/_/g, " ");
+  if (s === "critical") return "critical";
+  if (s === "needs support") return "needs support";
+  if (s === "cleanup") return "cleanup";
+  return "cleanup";
+}
+
+function normalizeVerification(raw: string): VerificationLevel {
+  if (raw === "initial_reports" || raw === "confident" || raw === "verified") return raw;
+  return "initial_reports";
+}
+
 export type MapIncidentUpdates = Partial<{
   summary: string;
   reportedAt: string;
@@ -69,7 +89,7 @@ interface MapIncidentDrawerProps {
 
 export function MapIncidentDrawer({ incident, onClose, onRemove, onSummarySave, onUpdate }: MapIncidentDrawerProps) {
   const { lang } = useLanguageStore();
-  const meta = CRITICALITY_META[incident.criticality];
+  const meta = CRITICALITY_META[normalizeCriticality(incident.criticality)];
   const isEditable = Boolean(onUpdate);
   const summarySave = onSummarySave ?? (onUpdate ? (id: string, s: string) => onUpdate(id, { summary: s }) : undefined);
 
@@ -84,8 +104,12 @@ export function MapIncidentDrawer({ incident, onClose, onRemove, onSummarySave, 
   const [casualtiesCatDraft, setCasualtiesCatDraft] = useState<CasualtiesCategory>(incident.casualtiesCategory);
   const [manpowerDraft, setManpowerDraft] = useState<number>(incident.manpowerEstimate);
   const [manpowerCatDraft, setManpowerCatDraft] = useState<ManpowerCategory>(incident.manpowerCategory);
-  const [criticalityDraft, setCriticalityDraft] = useState<CriticalityTier>(incident.criticality);
-  const [verificationDraft, setVerificationDraft] = useState<string>(incident.verification);
+  const [criticalityDraft, setCriticalityDraft] = useState<CriticalityTier>(() =>
+    normalizeCriticality(incident.criticality)
+  );
+  const [verificationDraft, setVerificationDraft] = useState<VerificationLevel>(() =>
+    normalizeVerification(incident.verification)
+  );
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -98,8 +122,8 @@ export function MapIncidentDrawer({ incident, onClose, onRemove, onSummarySave, 
     setCasualtiesCatDraft(incident.casualtiesCategory);
     setManpowerDraft(incident.manpowerEstimate);
     setManpowerCatDraft(incident.manpowerCategory);
-    setCriticalityDraft(incident.criticality);
-    setVerificationDraft(incident.verification);
+    setCriticalityDraft(normalizeCriticality(incident.criticality));
+    setVerificationDraft(normalizeVerification(incident.verification));
   }, [incident]);
 
   const saveAll = useCallback(async () => {
@@ -118,8 +142,10 @@ export function MapIncidentDrawer({ incident, onClose, onRemove, onSummarySave, 
     if (casualtiesCatDraft !== incident.casualtiesCategory) updates.casualtiesCategory = casualtiesCatDraft;
     if (manpowerDraft !== incident.manpowerEstimate) updates.manpowerEstimate = manpowerDraft;
     if (manpowerCatDraft !== incident.manpowerCategory) updates.manpowerCategory = manpowerCatDraft;
-    if (criticalityDraft !== incident.criticality) updates.criticality = criticalityDraft;
-    if (verificationDraft !== incident.verification) updates.verification = verificationDraft;
+    if (criticalityDraft !== normalizeCriticality(incident.criticality)) updates.criticality = criticalityDraft;
+    if (verificationDraft !== normalizeVerification(incident.verification)) {
+      updates.verification = verificationDraft;
+    }
     if (Object.keys(updates).length === 0) return;
     setIsSaving(true);
     try {
@@ -160,7 +186,8 @@ export function MapIncidentDrawer({ incident, onClose, onRemove, onSummarySave, 
   return (
     <div
       className={cn(
-        "fixed right-0 top-0 z-40 flex h-full w-full max-w-md flex-col overflow-y-auto border-l bg-gradient-to-b from-background to-muted/20 shadow-2xl",
+        /* Leaflet uses z-index up to ~1000 for controls/popups; stay above the map hit-target layer. */
+        "fixed right-0 top-0 z-[10050] flex h-full w-full max-w-md flex-col overflow-y-auto border-l bg-gradient-to-b from-background to-muted/20 shadow-2xl",
         "animate-in slide-in-from-right duration-200"
       )}
     >
@@ -174,45 +201,58 @@ export function MapIncidentDrawer({ incident, onClose, onRemove, onSummarySave, 
         <div className="flex flex-wrap gap-2 pt-1">
           {isEditable ? (
             <>
-              <Select value={criticalityDraft} onValueChange={(v) => setCriticalityDraft(v as CriticalityTier)}>
-                <SelectTrigger
-                  className="h-9 w-[120px] border px-2.5 text-xs font-semibold"
-                  style={{ borderColor: CRITICALITY_META[criticalityDraft].stroke, color: CRITICALITY_META[criticalityDraft].stroke }}
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="z-[9999]">
-                  {CRITICALITY_OPTIONS.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {getCriticalityLabel(lang, c)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {onUpdate ? (
-                <Select
-                  value={verificationDraft}
-                  onValueChange={(v) => {
-                    setVerificationDraft(v);
-                    onUpdate(incident.id, { verification: v });
+              <div className="relative">
+                <select
+                  aria-label="Criticality"
+                  value={criticalityDraft}
+                  onChange={(e) => setCriticalityDraft(normalizeCriticality(e.target.value))}
+                  className={cn(
+                    "h-9 w-[min(100%,130px)] min-w-[120px] appearance-none rounded-md border bg-background py-1 pl-2.5 pr-8 text-xs font-semibold",
+                    "cursor-pointer outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                  )}
+                  style={{
+                    borderColor: CRITICALITY_META[criticalityDraft].stroke,
+                    color: CRITICALITY_META[criticalityDraft].stroke,
                   }}
                 >
-                  <SelectTrigger
+                  {CRITICALITY_OPTIONS.map((c) => (
+                    <option key={c} value={c}>
+                      {getCriticalityLabel(lang, c)}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 opacity-50"
+                  aria-hidden
+                />
+              </div>
+              {onUpdate ? (
+                <div className="relative">
+                  <select
+                    aria-label="Verification"
+                    value={verificationDraft}
+                    onChange={(e) => {
+                      const v = normalizeVerification(e.target.value);
+                      setVerificationDraft(v);
+                      onUpdate(incident.id, { verification: v });
+                    }}
                     className={cn(
-                      "h-9 w-[130px] font-semibold px-2.5 text-xs",
+                      "h-9 w-[min(100%,150px)] min-w-[130px] appearance-none rounded-md border py-1 pl-2.5 pr-8 text-xs font-semibold",
+                      "cursor-pointer outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring",
                       VERIFICATION_STYLES[verificationDraft] ?? VERIFICATION_STYLES.initial_reports
                     )}
                   >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="z-[9999]" position="popper">
                     {VERIFICATION_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
+                      <option key={o.value} value={o.value}>
                         {t(lang, o.labelKey)}
-                      </SelectItem>
+                      </option>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </select>
+                  <ChevronDown
+                    className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 opacity-50"
+                    aria-hidden
+                  />
+                </div>
               ) : (
                 <span
                   className="rounded-md border px-2.5 py-1.5 text-xs font-semibold"
@@ -232,7 +272,7 @@ export function MapIncidentDrawer({ incident, onClose, onRemove, onSummarySave, 
                 className="rounded-md border px-2.5 py-1.5 text-xs font-semibold"
                 style={{ borderColor: meta.stroke, color: meta.stroke, backgroundColor: `${meta.stroke}15` }}
               >
-                {getCriticalityLabel(lang, incident.criticality)}
+                {getCriticalityLabel(lang, normalizeCriticality(incident.criticality))}
               </span>
               <span
                 className="rounded-md border px-2.5 py-1.5 text-xs font-semibold"
@@ -242,7 +282,11 @@ export function MapIncidentDrawer({ incident, onClose, onRemove, onSummarySave, 
                   backgroundColor: "hsl(var(--muted))",
                 }}
               >
-                {t(lang, (VERIFICATION_KEYS[incident.verification] ?? "verificationInitial") as TranslationKey)}
+                {t(
+                  lang,
+                  (VERIFICATION_KEYS[normalizeVerification(incident.verification)] ??
+                    "verificationInitial") as TranslationKey
+                )}
               </span>
             </>
           )}

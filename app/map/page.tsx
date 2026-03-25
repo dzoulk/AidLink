@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { SiteHeader } from "@/components/SiteHeader";
-import { MapIncidentDrawer } from "@/components/MapIncidentDrawer";
+import { MapIncidentDrawer, type MapIncidentUpdates } from "@/components/MapIncidentDrawer";
 import { RegionZonePanel } from "@/components/RegionZonePanel";
 import { OpenIncidentsPanel } from "@/components/OpenIncidentsPanel";
 import { Button } from "@/components/ui/button";
@@ -133,6 +133,66 @@ function PublicMapContent() {
     return () => clearInterval(id);
   }, [fetchIncidents]);
 
+  const handleIncidentUpdate = useCallback(
+    async (incidentId: string, updates: MapIncidentUpdates) => {
+      const body: Record<string, unknown> = { incidentId, region };
+      if (updates.summary != null) body.summary = updates.summary;
+      if (updates.reportedAt != null) body.time_of_incident = updates.reportedAt;
+      if (updates.lat != null) body.location_lat = updates.lat;
+      if (updates.lng != null) body.location_lon = updates.lng;
+      if (updates.radiusKm != null) body.location_radius_km = updates.radiusKm;
+      if (updates.casualtiesEstimate != null) body.casualties_estimate = updates.casualtiesEstimate;
+      if (updates.casualtiesCategory != null) body.casualties = updates.casualtiesCategory;
+      if (updates.manpowerEstimate != null) body.manpower_needed_estimate = updates.manpowerEstimate;
+      if (updates.manpowerCategory != null) body.manpower_needed = updates.manpowerCategory;
+      if (updates.criticality != null) {
+        body.criticality =
+          updates.criticality === "needs support" ? "needs_support" : updates.criticality;
+      }
+      if (updates.verification != null) body.verification = updates.verification;
+
+      const applyLocal = () =>
+        setMapIncidents((prev) =>
+          prev.map((i) => {
+            if (i.id !== incidentId) return i;
+            return {
+              ...i,
+              ...(updates.summary != null ? { summary: updates.summary } : {}),
+              ...(updates.reportedAt != null ? { reportedAt: updates.reportedAt } : {}),
+              ...(updates.lat != null ? { lat: updates.lat } : {}),
+              ...(updates.lng != null ? { lng: updates.lng } : {}),
+              ...(updates.radiusKm != null ? { radiusKm: updates.radiusKm } : {}),
+              ...(updates.casualtiesEstimate != null
+                ? { casualtiesEstimate: updates.casualtiesEstimate }
+                : {}),
+              ...(updates.casualtiesCategory != null
+                ? { casualtiesCategory: updates.casualtiesCategory }
+                : {}),
+              ...(updates.manpowerEstimate != null ? { manpowerEstimate: updates.manpowerEstimate } : {}),
+              ...(updates.manpowerCategory != null ? { manpowerCategory: updates.manpowerCategory } : {}),
+              ...(updates.criticality != null ? { criticality: updates.criticality } : {}),
+              ...(updates.verification != null
+                ? { verification: updates.verification as MapIncident["verification"] }
+                : {}),
+            };
+          })
+        );
+
+      try {
+        await fetch("/api/incidents-supabase", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+      } catch {
+        // Network error — still update local state so the panel stays usable.
+      } finally {
+        applyLocal();
+      }
+    },
+    [region]
+  );
+
   return (
     <div className="flex h-screen flex-col">
       <SiteHeader
@@ -179,6 +239,7 @@ function PublicMapContent() {
           <MapIncidentDrawer
             incident={selected}
             onClose={() => setSelectedId(null)}
+            onUpdate={handleIncidentUpdate}
           />
         )}
 

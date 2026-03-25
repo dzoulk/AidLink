@@ -113,7 +113,7 @@ const TRANSLATIONS: Record<LangCode, Record<TranslationKey, string>> = {
     criticality: "Criticality (by time since incident)",
     critical: "Critical",
     needsSupport: "Moderate",
-    cleanUp: "Clean Up",
+    cleanUp: "Cleanup",
     hoverHint: "Hover a marker for summary",
     clickHint: "Click Open details for full panel",
     gazaArea: "Click the Gaza area or use Gaza view to zoom in",
